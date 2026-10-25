@@ -1,4 +1,6 @@
 import json
+import hashlib
+import re
 import sys
 import shutil
 import subprocess
@@ -8,6 +10,50 @@ from io import BytesIO
 import pytest
 
 from configs import ci_release
+
+
+@pytest.mark.parametrize("key", ["appimagetool", "appimage_runtime"])
+def test_appimage_binaries_pin_upload_ids_and_source_revisions(key):
+    item = json.loads(ci_release.VENDORS.read_text())[key]
+    assert re.fullmatch(
+        rf"https://api\.github\.com/repos/{re.escape(item['repo'])}/releases/assets/[1-9][0-9]*",
+        item["url"],
+    )
+    assert re.fullmatch(r"[a-f0-9]{64}", item["sha256"])
+    assert re.fullmatch(r"[a-f0-9]{40}", item["revision"])
+
+
+@pytest.mark.parametrize("url,accept", [
+    ("https://api.github.com/repos/Example/Runtime/releases/assets/123", "application/octet-stream"),
+    ("https://example.com/archive.tar.gz", None),
+])
+def test_download_negotiates_binary_content_only_for_pinned_github_assets(tmp_path, monkeypatch, url, accept):
+    payload = b"synthetic pinned binary"
+    requests = []
+
+    def open_request(request, **kwargs):
+        requests.append(request)
+        return BytesIO(payload)
+
+    monkeypatch.setattr(ci_release.urllib.request, "urlopen", open_request)
+    destination = tmp_path / "binary"
+    checksum = hashlib.sha256(payload).hexdigest()
+    assert ci_release.download(url, destination, checksum) == destination
+    assert requests[0].get_header("Accept") == accept
+    assert destination.read_bytes() == payload
+
+
+def test_changed_vendor_asset_fails_checksum_without_replacing_existing_file(tmp_path, monkeypatch):
+    destination = tmp_path / "runtime"
+    destination.write_bytes(b"previous bytes")
+    monkeypatch.setattr(ci_release.urllib.request, "urlopen", lambda *args, **kwargs: BytesIO(b"changed bytes"))
+    with pytest.raises(ValueError, match="Vendor checksum mismatch"):
+        ci_release.download(
+            "https://api.github.com/repos/Example/Runtime/releases/assets/123",
+            destination, hashlib.sha256(b"expected bytes").hexdigest(),
+        )
+    assert destination.read_bytes() == b"previous bytes"
+    assert not destination.with_suffix(".download").exists()
 
 
 def test_release_metadata_cli_does_not_require_source_root_submodules(tmp_path):

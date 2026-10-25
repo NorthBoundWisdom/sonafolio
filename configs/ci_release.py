@@ -59,7 +59,11 @@ def download(url: str, destination: Path, checksum: str | None = None) -> Path:
         return destination
     temporary = destination.with_suffix(destination.suffix + ".download")
     try:
-        request = urllib.request.Request(url, headers={"User-Agent": "SonaFolio-release/1"})
+        headers = {"User-Agent": "SonaFolio-release/1"}
+        if re.fullmatch(r"https://api\.github\.com/repos/[^/]+/[^/]+/releases/assets/[1-9][0-9]*", url):
+            # Asset IDs stay bound to one upload, unlike the moving continuous tag.
+            headers["Accept"] = "application/octet-stream"
+        request = urllib.request.Request(url, headers=headers)
         with (
             urllib.request.urlopen(request, timeout=120) as response,
             temporary.open("wb") as handle,

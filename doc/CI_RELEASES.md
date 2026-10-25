@@ -83,7 +83,9 @@ committed configuration merely to make a test pass.
 ## Redistribution materials
 
 `configs/ci-vendors.json` pins Qt 6.12.0 source archives/checksums, AppImage tooling/runtime and the
-Microsoft runtime license document. The Windows SDK uses the official architecture-specific repository and SHA-256 archive checks
+Microsoft runtime license document. AppImage binaries use fixed GitHub release asset IDs and
+SHA-256 checks instead of mutable `continuous` download links. The runtime's matching upstream
+build commit also pins its corresponding source archive. The Windows SDK uses the official architecture-specific repository and SHA-256 archive checks
 (the current aqt release does not support that new Windows repository layout). Other Qt SDK
 downloads are verified by aqtinstall; source
 archives are verified against the committed SHA-256 values. The release script confirms that SDK
