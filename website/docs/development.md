@@ -5,7 +5,7 @@
 ## 本地客户端
 
 ```bash
-git clone --recurse-submodules https://github.com/NorthBoundWisdom/sonafolio.git
+git clone https://github.com/NorthBoundWisdom/sonafolio.git
 cd sonafolio
 python3 configs/setup_local_app.py
 python3 configs/ios_workflow.py build --platform mac --scheme Audio2TextApp --configuration debug --distribution ad-hoc
@@ -15,8 +15,6 @@ python3 configs/ios_workflow.py build --platform ios --scheme Audio2Text-iOS --c
 macOS 原生包在 `build/app/SonaFolio.app`；iOS 命令验证模拟器构建。Qt 使用本机 Qt SDK 与 CMake：
 
 ```bash
-python3 configs/source_roots.py init-seeds --quiet
-python3 configs/source_roots.py materialize --quiet
 python3 configs/qt_workflow.py config --configuration Release --qt-prefix <Qt-prefix>
 python3 configs/qt_workflow.py smoke --configuration Release
 ```
@@ -24,7 +22,9 @@ python3 configs/qt_workflow.py smoke --configuration Release
 替换实际 SDK 路径，不提交机器绝对路径。生产 ASR 后端的变更需要质量门与语义审阅，不因“能编译”就晋升。
 
 
-Qt 控件通过 FreeCM 从 `source_roots.lock.jsonc.in` 固定的 GeoControls 提交引入；窗口、按钮、输入框、菜单、弹窗、滚动条和分栏使用共享控件。依赖源码保存在忽略的 `build/` 中，Qt 安装包包含其 MIT 许可。已有本地 lock 的开发者需先合并模板中的 GeoControls 条目。
+本机环境集中写在不进入 Git 跟踪的根目录 `build.local.json`：首次运行本地设置脚本或 Qt Config 时，会从 `configs/build.local.example.json` 创建缺失的文件；已有文件不覆盖。模板中的路径留空，填写本机配置后再运行 Config。`environment` 设置 SDK、GeoControls 路径、签名和版本变量，`path` 列出补充的工具目录。Swift、Qt、CI 脚本和可选 FreeCM 插件命令共用读取逻辑，无需生成锁文件。
+
+Qt 只使用 `GEOCONTROLS_SOURCE_ROOT` 指定的本地 GeoControls 检出；路径缺失或无效时立即报错，不自动下载。Qt SDK 可用 `AUDIO2TEXTQT_QT_PREFIX` 设置；工作流也支持 `--qt-prefix` 和 `--geocontrols-source` 显式参数。CI 在单独的检出步骤准备固定提交，Qt 安装包记录实际提交并包含 MIT 许可。无需拉取或安装 FreeCM，插件的 Config、Build、Run、Test、Package 接线保留。
 
 ## 测试与文档
 

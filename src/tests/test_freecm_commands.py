@@ -49,7 +49,7 @@ def test_freecm_manifest_passes_current_config_context_validation() -> None:
     completed = subprocess.run(
         [
             sys.executable,
-            str(REPO_ROOT / "FreeCM" / "tools" / "validate_repo_commands.py"),
+            str(REPO_ROOT / "configs" / "validate_repo_commands.py"),
             str(REPO_ROOT),
         ],
         capture_output=True,
@@ -57,6 +57,20 @@ def test_freecm_manifest_passes_current_config_context_validation() -> None:
         check=False,
     )
     assert completed.returncode == 0, completed.stdout + completed.stderr
+
+
+def test_freecm_manifest_validator_rejects_missing_config_context(tmp_path) -> None:
+    manifest = _manifest()
+    manifest["commands"]["build"][0]["configurations"] = ["missing-config"]
+    path = tmp_path / "configs" / "freecm.commands.jsonc"
+    path.parent.mkdir()
+    path.write_text(json.dumps(manifest), encoding="utf-8")
+    completed = subprocess.run(
+        [sys.executable, str(REPO_ROOT / "configs/validate_repo_commands.py"), str(tmp_path)],
+        capture_output=True, text=True, check=False,
+    )
+    assert completed.returncode == 1
+    assert "missing-config" in completed.stderr
 
 
 def test_freecm_config_build_package_are_wired_to_local_app_workflow() -> None:

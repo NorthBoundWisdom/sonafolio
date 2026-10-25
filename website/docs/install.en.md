@@ -85,10 +85,10 @@ This is client availability, not Linux ASR promotion. Use existing libraries wit
 
 ## Prepare the source CLI {#set-up-the-cli-from-source}
 
-Python 3.10+ is required; CI uses 3.13. Clone recursively:
+Python 3.10+ is required; CI uses 3.13. Clone the repository; required build helpers are included:
 
 ```bash
-git clone --recurse-submodules https://github.com/NorthBoundWisdom/sonafolio.git
+git clone https://github.com/NorthBoundWisdom/sonafolio.git
 cd sonafolio
 python3 configs/setup_local_app.py
 ```

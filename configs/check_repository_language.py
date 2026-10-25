@@ -40,8 +40,7 @@ def validate() -> list[str]:
     errors = []
     for name in tracked_and_new_files():
         path = ROOT / name
-        # FreeCM is a separately maintained third-party submodule, not host-owned source.
-        if name == "FreeCM" or not path.is_file():
+        if not path.is_file():
             continue
         if CHINESE.search(name):
             errors.append(f"{name}: non-English tracked filename")

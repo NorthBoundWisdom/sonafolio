@@ -3,10 +3,12 @@
 SonaFolio's original source is licensed under MIT (see LICENSE). This grant does not relicense
 its dependencies, optional model weights, downloaded media, or externally supplied runtimes.
 
-- **FreeCM**: MIT, Copyright (c) 2026 FreeCM. Its full license is in `FreeCM/LICENSE`.
-  FreeCM is a development/build dependency and is not part of the Python runtime wheel.
-  Python source distributions contain the CLI source; App, Qt and FreeCM development sources
-  are available from the repository rather than bundled into the CLI sdist.
+- **Vendored FreeCM command validator**: MIT, Copyright (c) 2026 FreeCM. Its full license is in
+  `configs/_vendor/LICENSE`; `configs/_vendor/UPSTREAM.json` records the source revision
+  and original file hashes. Only plugin command validation uses this snapshot;
+  builds require no FreeCM checkout or installation. The optional FreeCM editor plugin can
+  still use the repository's command and setup entrypoints. The vendored validator,
+  App and Qt development sources are outside the CLI wheel and source distribution.
 - **Python dependencies**: installed separately by the package manager. Their distribution metadata,
   licenses and notices remain in each installed package. A wheel of SonaFolio does not contain
   these dependencies. A release that embeds Python and its dependencies must inventory them.
@@ -18,8 +20,9 @@ its dependencies, optional model weights, downloaded media, or externally suppli
   https://doc.qt.io/qt-6/licenses-used-in-qt.html. The release inventory must describe the actual
   deployed libraries, plugins and resources, including their notices and corresponding sources.
 - **GeoControls**: MIT, Copyright (c) 2026 Shanghai Astroform Software Ltd. The Qt client
-  embeds its controls, application shell and icon resources from the exact revision in
-  `source_roots.lock.jsonc.in`. The upstream license is available at
+  embeds its controls, application shell and icon resources from a prepared local checkout.
+  CI explicitly checks out the revision pinned in `.github/workflows/release.yml`.
+  The upstream license is available at
   https://github.com/NorthBoundWisdom/GeoControls/blob/main/LICENSE and is copied into
   Qt package licenses with a pinned-revision component record. It is not part of the
   Python wheel, Swift client or ASR runtime.

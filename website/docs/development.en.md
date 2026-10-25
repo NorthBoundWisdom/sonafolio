@@ -5,7 +5,7 @@ Original source is MIT; dependencies, models, and media retain their terms. Chin
 ## Clients
 
 ```bash
-git clone --recurse-submodules https://github.com/NorthBoundWisdom/sonafolio.git
+git clone https://github.com/NorthBoundWisdom/sonafolio.git
 cd sonafolio
 python3 configs/setup_local_app.py
 python3 configs/ios_workflow.py build --platform mac --scheme Audio2TextApp --configuration debug --distribution ad-hoc
@@ -15,8 +15,6 @@ python3 configs/ios_workflow.py build --platform ios --scheme Audio2Text-iOS --c
 Mac output is build/app/SonaFolio.app; iOS validates the simulator. Qt uses your SDK/CMake:
 
 ```bash
-python3 configs/source_roots.py init-seeds --quiet
-python3 configs/source_roots.py materialize --quiet
 python3 configs/qt_workflow.py config --configuration Release --qt-prefix <Qt-prefix>
 python3 configs/qt_workflow.py smoke --configuration Release
 ```
@@ -24,7 +22,9 @@ python3 configs/qt_workflow.py smoke --configuration Release
 Use actual local SDK paths without committing them. Backend promotion needs gates/semantic review, not only compilation.
 
 
-Qt controls come from the GeoControls revision pinned in `source_roots.lock.jsonc.in`, materialized by FreeCM under ignored `build/`. The window, buttons, fields, menus, popups, scroll bars and split view use shared controls. Qt packages include its MIT license. Existing local locks need the template’s GeoControls entries before initialization.
+Machine-local settings live in ignored root `build.local.json`. Initial local setup or Qt Config creates a missing file from `configs/build.local.example.json`, preserving existing files. Template paths are empty; fill in local settings and run Config again. `environment` contains SDK/GeoControls paths, signing and version variables, while `path` lists additional tool directories. Swift, Qt, CI scripts and optional FreeCM project commands share the loader without generating lock files.
+
+Qt only consumes the local checkout selected by `GEOCONTROLS_SOURCE_ROOT`; missing or invalid paths fail immediately without downloads. Set the SDK with `AUDIO2TEXTQT_QT_PREFIX`, or use explicit `--qt-prefix` and `--geocontrols-source` workflow options. CI prepares its pinned source in a separate checkout step. Packages record the actual revision and MIT license. No FreeCM checkout or installation is required; Config, Build, Run, Test and Package wiring remains available.
 
 ## Checks and documentation
 

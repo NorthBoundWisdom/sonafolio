@@ -1,22 +1,23 @@
 # SonaFolio Agent Guide
 
-## Owner-Managed FreeCM Latest Policy
+## Build Configuration and FreeCM Plugin
 
-- This owner-managed repository follows the latest `FreeCM/master` on its
-  existing primary branch without pull requests. This policy overrides generic
-  FreeCM refresh and publication guidance elsewhere in the repository.
-- Refresh from the host root with
-  `git submodule update --remote --checkout FreeCM`; never run
-  `git -C FreeCM pull` in the normally detached submodule.
-- If `git diff --submodule -- FreeCM` is empty, stay silent: do not warn,
-  commit, create a branch, or open a pull request.
-- If the gitlink changes, run the relevant host validation, commit the FreeCM
-  update and required compatibility edits on the existing primary branch, and
-  push that branch directly without a pull request.
-- Routine automatic refresh requires clean host and FreeCM worktrees. If either
-  contains unrelated changes, stop and report them rather than mixing changes.
-- The shared policy is documented in
-  `FreeCM/.codex/freecm-wiring/assets/owner-managed-latest.md`.
+- FreeCM is not a submodule or external build dependency. Only its plugin command
+  validator is vendored under `configs/_vendor/`, with provenance and the MIT license.
+  Do not restore automatic FreeCM checkout or refresh behavior.
+- Preserve optional FreeCM Config/Build/Run/Test/Package commands in
+  `configs/freecm.commands.jsonc`. `configs/source_root_workflow.py` is only the
+  plugin's setup/cleanup adapter; it does not manage dependency locks or modes.
+- GeoControls must be prepared locally and selected with `GEOCONTROLS_SOURCE_ROOT`.
+  CMake only consumes that checkout; missing dependencies fail without downloading.
+  Do not add automatic dependency acquisition to configure/build commands.
+- Application version defaults use `configs/app_build.json`. Root `build.local.json`
+  is ignored and holds machine-local environment variables and PATH entries, including
+  SDK/dependency paths and signing/version overrides. All build entrypoints load it
+  through `configs/build_environment.py`. The public `configs/build.local.example.json`
+  is copied only when the local file is missing during setup or Qt Config; never overwrite
+  existing local settings. Do not recreate source-root dependency locks or modes.
+- Validate plugin commands with `python3 configs/validate_repo_commands.py .`.
 
 This repository is public. Keep documentation, defaults, tests, and skills free of private absolute
 paths, local usernames, machine-specific assumptions, and episode-specific tuning.
@@ -132,9 +133,9 @@ validated table changes.
   never commit those files.
 - Use vcpkg-discovered tools such as `ffmpeg.exe` and `ffprobe.exe` through environment/PATH setup or
   runtime discovery. Do not commit local vcpkg roots or absolute machine paths.
-- For this Windows workstation, the common vcpkg root is `C:\OpenSource\vcpkg`; wire it through
-  `source_roots.lock.jsonc.in` / generated `source_roots.lock.jsonc` so FreeCM plugin
-  `--init` and `--update` can expose it to commands.
+- Set `VCPKG_ROOT` to the local vcpkg installation, and expose FFmpeg through PATH
+  or `AUDIO2TEXTQT_FFMPEG_DIR` in ignored `build.local.json`. FreeCM commands load the
+  same local environment; SDK paths must not be committed as application configuration.
 - Keep Windows backend code behind `src/atot/backends/` and Windows runtime checks in small,
   testable modules.
 - Prefer CUDA 13 when the installed CTranslate2 wheel can actually use it. If CTranslate2 reports

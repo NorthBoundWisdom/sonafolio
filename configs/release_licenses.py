@@ -33,7 +33,7 @@ def copy_project_licenses(destination: Path) -> None:
     destination.mkdir(parents=True, exist_ok=True)
     for name in ('LICENSE', 'THIRD_PARTY_NOTICES.md'):
         shutil.copy2(REPO_ROOT / name, destination / name)
-    shutil.copy2(REPO_ROOT / 'FreeCM' / 'LICENSE', destination / 'FreeCM-LICENSE')
+    shutil.copy2(REPO_ROOT / 'configs' / '_vendor' / 'LICENSE', destination / 'FreeCM-LICENSE')
 
 
 def _required_files(staging: Path) -> set[str]:

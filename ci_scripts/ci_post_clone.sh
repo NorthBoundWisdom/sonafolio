@@ -11,15 +11,6 @@ if [ ! -f configs/generate_xcodeproj.py ]; then
     exit 1
 fi
 
-if [ ! -f source_roots.lock.jsonc ]; then
-    if [ ! -f source_roots.lock.jsonc.in ]; then
-        echo "[ci_post_clone] missing source_roots.lock.jsonc.in" >&2
-        exit 1
-    fi
-    echo "[ci_post_clone] materializing active source root config"
-    cp source_roots.lock.jsonc.in source_roots.lock.jsonc
-fi
-
 echo "[ci_post_clone] generating Audio2Text.xcodeproj"
 python3 configs/generate_xcodeproj.py
 

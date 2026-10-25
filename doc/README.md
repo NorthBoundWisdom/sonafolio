@@ -28,6 +28,7 @@
 | --- | --- |
 | [Architecture](ARCHITECTURE.md) | CLI、Swift、Qt、MCP 与 ASR 边界 |
 | [Technical guide](TECHNICAL_GUIDE.md) | 构建、接口与扩展 |
+| [Build configuration](BUILD_CONFIGURATION.md) | 应用版本、本机签名、Qt 依赖与 SDK 路径 |
 | [Agent guide](../AGENTS.md) | 开发政策与公共源码限制 |
 | [Swift](../app/README.md) · [Qt](../qt/Audio2TextQt/README.md) | 客户端构建参考 |
 | [CI releases](CI_RELEASES.md) | 四类安装包、签名与 tag 发布 |

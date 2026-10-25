@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import shutil
 import subprocess
 
@@ -57,12 +56,7 @@ def test_qt_configure_sets_build_type_and_refreshes_qt_discovery(
         ]
     )
     commands = []
-    class Roots:
-        def root_for_dependency(self, name):
-            assert name == "GeoControls"
-            return tmp_path / "GeoControls"
-
-    monkeypatch.setattr(qt_workflow.WORKFLOW, "resolve_source_roots", lambda **_: Roots())
+    monkeypatch.setenv("GEOCONTROLS_SOURCE_ROOT", str(tmp_path / "controls"))
     monkeypatch.setattr(qt_workflow, "_find_qt_prefix", lambda *_: tmp_path / "Qt")
     monkeypatch.setattr(qt_workflow, "_run", commands.append)
 
@@ -71,7 +65,7 @@ def test_qt_configure_sets_build_type_and_refreshes_qt_discovery(
     assert f"-DCMAKE_BUILD_TYPE={configuration}" in commands[0]
     assert "-UQt6*_DIR" in commands[0]
     assert "-UQT_FEATURE_*" in commands[0]
-    assert f"-DGEOCONTROLS_SOURCE_ROOT={tmp_path / 'GeoControls'}" in commands[0]
+    assert f"-DGEOCONTROLS_SOURCE_ROOT={tmp_path / 'controls'}" in commands[0]
 
 
 def test_qt_workflow_package_command_defaults_to_release_zip() -> None:
@@ -86,6 +80,25 @@ def test_qt_workflow_package_command_defaults_to_release_zip() -> None:
     assert args.msvc_runtime_dir is None
     assert args.include_python_runtime is False
     assert args.python_runtime_source is None
+
+
+@pytest.mark.parametrize("explicit", [False, True])
+def test_qt_configure_selects_environment_toolchain(tmp_path, monkeypatch, explicit):
+    vcpkg = tmp_path / "vcpkg"
+    toolchain = vcpkg / "scripts/buildsystems/vcpkg.cmake"
+    toolchain.parent.mkdir(parents=True)
+    toolchain.write_text("# Fixture\n")
+    monkeypatch.setenv("VCPKG_ROOT", str(vcpkg))
+    monkeypatch.delenv("CMAKE_TOOLCHAIN_FILE", raising=False)
+    if explicit:
+        toolchain = tmp_path / "custom.cmake"
+        toolchain.write_text("# Explicit fixture\n")
+        monkeypatch.setenv("CMAKE_TOOLCHAIN_FILE", str(toolchain))
+    commands = []
+    monkeypatch.setattr(qt_workflow, "_run", commands.append)
+    monkeypatch.setattr(qt_workflow, "_find_qt_prefix", lambda *_: None)
+    qt_workflow._configure(qt_workflow.parse_args(["config"]), tmp_path / "build")
+    assert f"-DCMAKE_TOOLCHAIN_FILE={toolchain}" in commands[0]
 
 
 def test_qt_package_archive_path_includes_version(tmp_path) -> None:
@@ -107,7 +120,6 @@ def test_qt_macos_package_archive_path_has_platform_name(tmp_path) -> None:
 
 
 def test_qt_workflow_macos_executable_candidates_include_app_bundle(monkeypatch, tmp_path) -> None:
-    monkeypatch.setattr(qt_workflow, "_source_roots_platform_key", lambda: "mac")
     monkeypatch.setattr(qt_workflow, "_qt_deploy_tool_name", lambda: "macdeployqt")
     monkeypatch.setattr(qt_workflow, "_qt_qmake_names", lambda: ("qmake6", "qmake"))
     monkeypatch.setattr(qt_workflow.sys, "platform", "darwin")
@@ -125,7 +137,6 @@ def test_qt_workflow_macos_executable_candidates_include_app_bundle(monkeypatch,
 
 
 def test_qt_workflow_macos_qt_prefix_accepts_macdeployqt(monkeypatch, tmp_path) -> None:
-    monkeypatch.setattr(qt_workflow, "_source_roots_platform_key", lambda: "mac")
     monkeypatch.setattr(qt_workflow, "_qt_deploy_tool_name", lambda: "macdeployqt")
     monkeypatch.setattr(qt_workflow, "_qt_qmake_names", lambda: ("qmake6", "qmake"))
     monkeypatch.setattr(qt_workflow.sys, "platform", "darwin")
@@ -139,7 +150,6 @@ def test_qt_workflow_macos_qt_prefix_accepts_macdeployqt(monkeypatch, tmp_path) 
 
 
 def test_qt_workflow_qt_prefix_accepts_qmake6(monkeypatch, tmp_path) -> None:
-    monkeypatch.setattr(qt_workflow, "_source_roots_platform_key", lambda: "mac")
     monkeypatch.setattr(qt_workflow, "_qt_deploy_tool_name", lambda: "macdeployqt")
     monkeypatch.setattr(qt_workflow, "_qt_qmake_names", lambda: ("qmake6", "qmake"))
     monkeypatch.setattr(qt_workflow.sys, "platform", "darwin")
@@ -152,9 +162,8 @@ def test_qt_workflow_qt_prefix_accepts_qmake6(monkeypatch, tmp_path) -> None:
     assert qt_workflow._looks_like_qt_prefix(qt_prefix)
 
 
-def test_qt_workflow_reads_qt_prefix_from_source_roots(monkeypatch, tmp_path) -> None:
+def test_qt_workflow_reads_qt_prefix_from_environment(monkeypatch, tmp_path) -> None:
     monkeypatch.setattr(qt_workflow, "REPO_ROOT", tmp_path)
-    monkeypatch.setattr(qt_workflow, "_source_roots_platform_key", lambda: "mac")
     monkeypatch.setattr(qt_workflow, "_qt_deploy_tool_name", lambda: "macdeployqt")
     monkeypatch.setattr(qt_workflow, "_qt_qmake_names", lambda: ("qmake6", "qmake"))
     monkeypatch.setattr(qt_workflow.sys, "platform", "darwin")
@@ -163,44 +172,27 @@ def test_qt_workflow_reads_qt_prefix_from_source_roots(monkeypatch, tmp_path) ->
     (qt_prefix / "lib" / "cmake" / "Qt6" / "Qt6Config.cmake").write_text("", encoding="utf-8")
     (qt_prefix / "bin").mkdir()
     (qt_prefix / "bin" / "macdeployqt").write_text("", encoding="utf-8")
-    (tmp_path / "source_roots.lock.jsonc").write_text(
-        json.dumps(
-            {
-                "schemaVersion": 5,
-                "cmakeCacheVariables": {"mac": {"CMAKE_PREFIX_PATH": str(qt_prefix)}},
-            }
-        ),
-        encoding="utf-8",
-    )
+    monkeypatch.setenv("CMAKE_PREFIX_PATH", str(qt_prefix))
 
     assert qt_workflow._find_qt_prefix(None, tmp_path / "build") == qt_prefix
 
 
-def test_qt_workflow_source_roots_ffmpeg_dirs_include_prefix_tools(monkeypatch, tmp_path) -> None:
+def test_qt_workflow_environment_ffmpeg_dirs_include_prefix_tools(monkeypatch, tmp_path) -> None:
     monkeypatch.setattr(qt_workflow, "REPO_ROOT", tmp_path)
-    monkeypatch.setattr(qt_workflow, "_source_roots_platform_key", lambda: "mac")
     monkeypatch.setattr(qt_workflow, "_qt_deploy_tool_name", lambda: "macdeployqt")
     monkeypatch.setattr(qt_workflow, "_qt_qmake_names", lambda: ("qmake6", "qmake"))
     monkeypatch.setattr(qt_workflow.sys, "platform", "darwin")
     vcpkg_prefix = tmp_path / "vcpkg" / "installed" / "arm64-osx"
-    (tmp_path / "source_roots.lock.jsonc").write_text(
-        json.dumps(
-            {
-                "schemaVersion": 5,
-                "cmakeCacheVariables": {"mac": {"CMAKE_PREFIX_PATH": str(vcpkg_prefix)}},
-            }
-        ),
-        encoding="utf-8",
-    )
+    monkeypatch.setenv("CMAKE_PREFIX_PATH", str(vcpkg_prefix))
 
     dirs = qt_workflow._candidate_ffmpeg_dirs(None)
 
     assert (
-        "source_roots.lock.jsonc cmakeCacheVariables.mac.CMAKE_PREFIX_PATH",
+        "CMAKE_PREFIX_PATH",
         vcpkg_prefix / "tools" / "ffmpeg",
     ) in dirs
     assert (
-        "source_roots.lock.jsonc cmakeCacheVariables.mac.CMAKE_PREFIX_PATH",
+        "CMAKE_PREFIX_PATH",
         vcpkg_prefix / "bin",
     ) in dirs
 

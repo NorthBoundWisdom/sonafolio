@@ -11,8 +11,6 @@ remain compatible; see [brand identifiers](../../doc/BRANDING.md).
 ## Build
 
 ```powershell
-python configs/source_roots.py init-seeds --quiet
-python configs/source_roots.py materialize --quiet
 python configs/qt_workflow.py config --configuration Release --qt-prefix <Qt-prefix>
 python configs/qt_workflow.py build --configuration Release
 ```
@@ -24,7 +22,9 @@ so the smoke test can run in CI-like shells.
 
 ## FreeCM
 
-FreeCM exposes Qt client variants on macOS and Windows. With `Local App Config`
+The optional FreeCM plugin exposes Qt client variants on macOS and Windows using
+`configs/freecm.commands.jsonc`. The setup adapter calls repository-owned commands;
+no FreeCM checkout or Python package is required. With `Local App Config`
 selected on macOS, use the arrow beside `Run` and choose `Mac Qt Client`. The same
 configuration also exposes Qt build, smoke-test and ZIP-package variants. The Swift
 app remains the default; selecting `Config: Mac Qt Client` makes the Qt variants
@@ -34,11 +34,16 @@ launches the build output. Set `AUDIO2TEXTQT_QT_PREFIX` or `CMAKE_PREFIX_PATH` t
 the Qt 6 prefix if Qt is not already discoverable from PATH or the existing CMake
 cache.
 
-`source_roots.lock.jsonc.in` pins GeoControls by its HTTPS remote and full commit.
-FreeCM prepares its source root under ignored `build/`; CMake consumes that root
-without downloading or vendoring controls. Existing machine-local locks must add the
-GeoControls entries from the template before initialization. Manual sibling checkout
-paths belong only in the ignored local lock's `depsManualPath.GeoControls`.
+Root `build.local.json` is ignored and stores local environment variables and PATH
+entries. The first Config creates it from `configs/build.local.example.json` when
+missing; existing local settings are preserved. Fill in its empty path fields and
+configure again. All project commands load it automatically. Set `GEOCONTROLS_SOURCE_ROOT`
+to a prepared GeoControls checkout and `AUDIO2TEXTQT_QT_PREFIX` to the installed SDK.
+`cmake/GeoControls.cmake` only consumes local sources. Missing sources fail without
+network access, downloads or submodule initialization. The Python workflow also
+accepts `--geocontrols-source`. CI prepares its pinned checkout in a separate step;
+release packaging records the actual clean checkout's commit and MIT license.
+See [build configuration](../../doc/BUILD_CONFIGURATION.md) for the file format.
 
 The client uses `GeoControls` for all interactive controls and `GeoControls.AppShell`
 for its application window. Qt Quick Controls is imported under `QQC` only for enums

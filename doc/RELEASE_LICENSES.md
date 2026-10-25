@@ -2,7 +2,8 @@
 
 The root MIT license covers SonaFolio's original source. It does not cover bundled dependencies.
 Python wheels include LICENSE and THIRD_PARTY_NOTICES.md; dependencies are installed separately.
-Swift macOS bundles include those files and FreeCM's license under Contents/Resources/licenses.
+Swift macOS bundles include those files and the optional command validator's license from
+`configs/_vendor/LICENSE` as `FreeCM-LICENSE` under Contents/Resources/licenses.
 
 ## Qt release gate
 

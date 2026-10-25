@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import argparse
-import json
 import os
 import re
 import shutil
@@ -14,12 +13,9 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
-FREECM_ROOT = REPO_ROOT / "FreeCM"
-if FREECM_ROOT.exists() and str(FREECM_ROOT) not in sys.path:
-    sys.path.insert(0, str(FREECM_ROOT))
 
+from configs.build_environment import ensure_local_build_environment, use_build_environment  # noqa: E402
 from configs.release_licenses import stage_release_licenses  # noqa: E402
-from configs.source_roots_lib import WORKFLOW  # noqa: E402
 
 QT_PROJECT_DIR = REPO_ROOT / "qt" / "Audio2TextQt"
 DEFAULT_BUILD_DIR = REPO_ROOT / "build" / "Audio2TextQt"
@@ -29,7 +25,6 @@ DEFAULT_PYTHON_RUNTIME_SOURCE = Path(sys.base_prefix)
 TARGET_NAME = "Audio2TextQt"
 PRODUCT_NAME = "SonaFolioQt"
 PACKAGE_PLATFORM = "Windows"
-SOURCE_ROOTS_LOCK_NAMES = ("source_roots.lock.jsonc", "source_roots.lock.jsonc.in")
 PACKAGE_IGNORE_PATTERNS = (
     "test-bin",
     "*.exp",
@@ -83,14 +78,6 @@ def _qt_qmake_names() -> tuple[str, ...]:
     return ("qmake.exe",) if os.name == "nt" else ("qmake6", "qmake")
 
 
-def _source_roots_platform_key() -> str:
-    if os.name == "nt":
-        return "win"
-    if sys.platform == "darwin":
-        return "mac"
-    return "linux"
-
-
 def _run(
     cmd: list[str | Path], *, cwd: Path = REPO_ROOT, env: dict[str, str] | None = None
 ) -> None:
@@ -134,68 +121,6 @@ def _split_prefix_path(value: str | None) -> list[str]:
         separators.append(";")
     pattern = "|".join(re.escape(separator) for separator in separators)
     return [part.strip() for part in re.split(pattern, value) if part.strip()]
-
-
-def _load_source_roots_lock(path: Path) -> dict[str, object]:
-    if not path.exists():
-        return {}
-    try:
-        from freecm.jsonc import loads_jsonc  # type: ignore[import-not-found]
-
-        payload = loads_jsonc(path.read_text(encoding="utf-8"), path_label=str(path))
-    except json.JSONDecodeError as exc:
-        raise SystemExit(f"SonaFolio Qt: invalid JSON in {path}: {exc}") from exc
-    except ModuleNotFoundError:
-        try:
-            payload = json.loads(path.read_text(encoding="utf-8"))
-        except json.JSONDecodeError as exc:
-            raise SystemExit(f"SonaFolio Qt: invalid JSON in {path}: {exc}") from exc
-    if not isinstance(payload, dict):
-        return {}
-    return payload
-
-
-def _source_roots_lock_values(section: str, key: str) -> list[tuple[str, str]]:
-    values: list[tuple[str, str]] = []
-    platform = _source_roots_platform_key()
-    for name in SOURCE_ROOTS_LOCK_NAMES:
-        path = REPO_ROOT / name
-        data = _load_source_roots_lock(path)
-        if not data:
-            continue
-        section_value = data.get(section)
-        if not isinstance(section_value, dict):
-            continue
-        common_value = section_value.get(key)
-        if isinstance(common_value, str):
-            values.append((f"{name} {section}.{key}", common_value))
-        platform_value = section_value.get(platform)
-        if isinstance(platform_value, dict):
-            nested_value = platform_value.get(key)
-            if isinstance(nested_value, str):
-                values.append((f"{name} {section}.{platform}.{key}", nested_value))
-    return values
-
-
-def _source_roots_terminal_path_entries() -> list[tuple[str, str]]:
-    values: list[tuple[str, str]] = []
-    platform = _source_roots_platform_key()
-    for name in SOURCE_ROOTS_LOCK_NAMES:
-        path = REPO_ROOT / name
-        data = _load_source_roots_lock(path)
-        if not data:
-            continue
-        terminal_path = data.get("terminalPath")
-        if not isinstance(terminal_path, dict):
-            continue
-        for key in ("common", platform):
-            entries = terminal_path.get(key)
-            if not isinstance(entries, list):
-                continue
-            for entry in entries:
-                if isinstance(entry, str) and entry.strip():
-                    values.append((f"{name} terminalPath.{key}", entry))
-    return values
 
 
 def _tool_prefix(tool_name: str) -> Path | None:
@@ -250,14 +175,6 @@ def _candidate_qt_prefixes(explicit: str | None, build_dir: Path) -> list[tuple[
     add("QT_DIR", os.environ.get("QT_DIR"))
     add("QTDIR", os.environ.get("QTDIR"))
     add("Qt6_ROOT", os.environ.get("Qt6_ROOT"))
-    for source, value in _source_roots_lock_values("cmakeEnvironment", "CMAKE_PREFIX_PATH"):
-        for entry in _split_prefix_path(value):
-            add(source, entry)
-    for source, value in _source_roots_lock_values("cmakeCacheVariables", "CMAKE_PREFIX_PATH"):
-        for entry in _split_prefix_path(value):
-            add(source, entry)
-    for source, value in _source_roots_terminal_path_entries():
-        add(source, value)
     add("CMakeCache Qt6_DIR", _cache_value(build_dir, "Qt6_DIR"))
     for entry in _split_prefix_path(_cache_value(build_dir, "CMAKE_PREFIX_PATH")):
         add("CMakeCache CMAKE_PREFIX_PATH", entry)
@@ -305,18 +222,30 @@ def _find_qt_deploy_tool(explicit: str | None, build_dir: Path) -> Path:
     locations = "\n  ".join(str(path) for path in searched) or "<none>"
     raise SystemExit(
         f"SonaFolio Qt: {tool_name} was not found for packaging. "
-        "Set --qt-prefix, AUDIO2TEXTQT_QT_PREFIX, CMAKE_PREFIX_PATH, or source_roots terminalPath.\n"
+        "Set --qt-prefix, AUDIO2TEXTQT_QT_PREFIX, CMAKE_PREFIX_PATH, or PATH.\n"
         f"Searched:\n  {locations}"
     )
 
 
-def _geocontrols_release_source() -> tuple[Path, str]:
-    roots = WORKFLOW.resolve_source_roots(quiet=True)
-    return roots.root_for_dependency('GeoControls'), roots.resolved_commits_by_dependency['GeoControls']
+def _geocontrols_release_source(build_dir: Path) -> tuple[Path, str]:
+    source = _cache_value(build_dir, "SONAFOLIO_GEOCONTROLS_SOURCE_ROOT")
+    if not source:
+        raise ValueError("Configure the Qt client before packaging GeoControls attribution.")
+    root = Path(source).resolve()
+
+    def git(*args: str) -> str:
+        return subprocess.run(
+            ["git", "-C", str(root), *args], check=True, capture_output=True, text=True
+        ).stdout.strip()
+
+    if Path(git("rev-parse", "--show-toplevel")).resolve() != root:
+        raise ValueError("GeoControls attribution requires its actual Git checkout.")
+    if git("status", "--porcelain", "--untracked-files=normal"):
+        raise ValueError("GeoControls must be clean before release packaging.")
+    return root, git("rev-parse", "HEAD")
 
 
 def _configure(args: argparse.Namespace, build_dir: Path) -> None:
-    roots = WORKFLOW.resolve_source_roots(materialize=True, allow_network=True)
     # --config only selects a configuration for multi-config generators. Ninja
     # and Makefiles need the build type at configure time to enable optimization.
     command: list[str | Path] = [
@@ -326,8 +255,20 @@ def _configure(args: argparse.Namespace, build_dir: Path) -> None:
         "-B",
         build_dir,
         f"-DCMAKE_BUILD_TYPE={args.configuration}",
-        f"-DGEOCONTROLS_SOURCE_ROOT={roots.root_for_dependency('GeoControls')}",
     ]
+    if args.geocontrols_source:
+        command.append(f"-DGEOCONTROLS_SOURCE_ROOT={_resolve_repo_path(args.geocontrols_source).resolve()}")
+    elif os.environ.get("GEOCONTROLS_SOURCE_ROOT"):
+        command.append(f"-DGEOCONTROLS_SOURCE_ROOT={_resolve_repo_path(os.environ['GEOCONTROLS_SOURCE_ROOT']).resolve()}")
+    explicit_toolchain = os.environ.get("CMAKE_TOOLCHAIN_FILE")
+    vcpkg = os.environ.get("VCPKG_ROOT")
+    if explicit_toolchain:
+        command.append(f"-DCMAKE_TOOLCHAIN_FILE={os.path.expandvars(os.path.expanduser(explicit_toolchain))}")
+    elif vcpkg:
+        toolchain = Path(vcpkg).expanduser() / "scripts/buildsystems/vcpkg.cmake"
+        if not toolchain.is_file():
+            raise SystemExit("VCPKG_ROOT does not contain scripts/buildsystems/vcpkg.cmake.")
+        command.append(f"-DCMAKE_TOOLCHAIN_FILE={toolchain}")
     if args.generator:
         command.extend(["-G", args.generator])
     qt_prefix = _find_qt_prefix(args.qt_prefix, build_dir)
@@ -415,16 +356,10 @@ def _candidate_ffmpeg_dirs(explicit: str | None) -> list[tuple[str, Path]]:
             for triplet in sorted(path for path in installed.iterdir() if path.is_dir()):
                 add("VCPKG_ROOT", triplet / "tools" / "ffmpeg")
 
-    for source, value in (
-        *_source_roots_lock_values("cmakeEnvironment", "CMAKE_PREFIX_PATH"),
-        *_source_roots_lock_values("cmakeCacheVariables", "CMAKE_PREFIX_PATH"),
-    ):
-        for entry in _split_prefix_path(value):
-            prefix = Path(os.path.expandvars(os.path.expanduser(entry)))
-            add(source, prefix / "tools" / "ffmpeg")
-            add(source, prefix / "bin")
-    for source, value in _source_roots_terminal_path_entries():
-        add(source, value)
+    for entry in _split_prefix_path(os.environ.get("CMAKE_PREFIX_PATH")):
+        prefix = Path(os.path.expandvars(os.path.expanduser(entry)))
+        add("CMAKE_PREFIX_PATH", prefix / "tools" / "ffmpeg")
+        add("CMAKE_PREFIX_PATH", prefix / "bin")
 
     for tool_name in FFMPEG_TOOL_NAMES:
         found = shutil.which(tool_name)
@@ -775,7 +710,7 @@ def _package_windows(args: argparse.Namespace, build_dir: Path) -> Path:
     )
     stage_release_licenses(
         staging_dir, Path(args.third_party_materials) if args.third_party_materials else None,
-        geocontrols=_geocontrols_release_source(),
+        geocontrols=_geocontrols_release_source(build_dir),
     )
     created = _create_package_archive(staging_dir, archive_path)
     print(f"Package: {created}", flush=True)
@@ -851,7 +786,7 @@ def _package_macos(args: argparse.Namespace, build_dir: Path) -> Path:
     )
     stage_release_licenses(
         staging_dir, Path(args.third_party_materials) if args.third_party_materials else None,
-        geocontrols=_geocontrols_release_source(),
+        geocontrols=_geocontrols_release_source(build_dir),
     )
     created = _create_package_archive(staging_dir, archive_path)
     print(f"Package: {created}", flush=True)
@@ -889,6 +824,7 @@ def _add_common_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--build-dir", default=_repo_relative(DEFAULT_BUILD_DIR))
     parser.add_argument("--configuration", default="Release")
     parser.add_argument("--qt-prefix")
+    parser.add_argument("--geocontrols-source", help="Prepared local GeoControls checkout; never downloaded.")
     parser.add_argument("--generator")
 
 
@@ -935,12 +871,14 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def main(argv: list[str] | None = None) -> int:
+def _main(argv: list[str] | None = None) -> int:
     args = parse_args(sys.argv[1:] if argv is None else argv)
     build_dir = _resolve_repo_path(args.build_dir)
 
     if args.command == "config":
-        _configure(args, build_dir)
+        ensure_local_build_environment(REPO_ROOT)
+        with use_build_environment(REPO_ROOT):
+            _configure(args, build_dir)
     elif args.command == "build":
         _build(args, build_dir, configure_if_missing=True)
     elif args.command == "launch":
@@ -954,6 +892,11 @@ def main(argv: list[str] | None = None) -> int:
     elif args.command == "package":
         _package(args, build_dir)
     return 0
+
+
+def main(argv: list[str] | None = None) -> int:
+    with use_build_environment(REPO_ROOT):
+        return _main(argv)
 
 
 if __name__ == "__main__":

@@ -13,8 +13,8 @@ def test_cli_sdist_contains_license_and_excludes_local_vendor_data(tmp_path):
     source = tmp_path / 'src' / 'atot' / '__init__.py'
     source.parent.mkdir(parents=True)
     source.write_text('__version__ = "0.1.0"\n')
-    # Reproduce the ignored submodule-local dependency that previously leaked into sdist.
-    vendor = tmp_path / 'FreeCM' / 'vscode-extension' / 'node_modules' / 'private.txt'
+    # Build helpers are repository sources, not part of the CLI distribution.
+    vendor = tmp_path / 'configs' / '_vendor' / 'private.txt'
     vendor.parent.mkdir(parents=True)
     vendor.write_text('synthetic local-only data')
     (tmp_path / 'config.toml').write_text('synthetic private config')
@@ -26,4 +26,4 @@ def test_cli_sdist_contains_license_and_excludes_local_vendor_data(tmp_path):
     assert any(n.endswith('/LICENSE') for n in names)
     assert any(n.endswith('/THIRD_PARTY_NOTICES.md') for n in names)
     assert any(n.endswith('/src/atot/__init__.py') for n in names)
-    assert not any('node_modules' in n or '/FreeCM/' in n or n.endswith('/config.toml') for n in names)
+    assert not any('/configs/' in n or n.endswith('/config.toml') for n in names)

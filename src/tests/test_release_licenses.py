@@ -3,7 +3,15 @@ import json
 
 import pytest
 
-from configs.release_licenses import stage_release_licenses
+from configs.release_licenses import REPO_ROOT, copy_project_licenses, stage_release_licenses
+
+
+def test_project_licenses_use_vendored_notice(tmp_path):
+    destination = tmp_path / 'licenses'
+    copy_project_licenses(destination)
+    assert (destination / 'FreeCM-LICENSE').read_bytes() == (
+        REPO_ROOT / 'configs' / '_vendor' / 'LICENSE'
+    ).read_bytes()
 
 
 def test_qt_inventory_includes_embedded_geocontrols(tmp_path):

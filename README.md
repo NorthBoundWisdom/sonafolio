@@ -28,7 +28,7 @@
 ## 快速开始
 
 ```bash
-git clone --recurse-submodules https://github.com/NorthBoundWisdom/sonafolio.git
+git clone https://github.com/NorthBoundWisdom/sonafolio.git
 cd sonafolio
 python3 configs/setup_local_app.py
 source ~/Documents/SpeechToTextData/env/bin/activate
@@ -249,4 +249,4 @@ python configs/check_repository_language.py
 
 官网、用户手册与本 README 默认中文，代码和通用界面保持英文。语言政策对中文文档、翻译和 ASR 资产逐文件记录，历史实验保留原始测量，公共源码不包含本机路径、音频、模型、Key 或私人资料库。
 
-原始代码采用 [MIT](LICENSE)。第三方组件、模型和媒体有各自条款，参见[第三方声明](THIRD_PARTY_NOTICES.md)和[发布许可](doc/RELEASE_LICENSES.md)。FreeCM 独立维护。
+原始代码采用 [MIT](LICENSE)。第三方组件、模型和媒体有各自条款，参见[第三方声明](THIRD_PARTY_NOTICES.md)和[发布许可](doc/RELEASE_LICENSES.md)。本机环境集中放在不跟踪的根目录 `build.local.json`；首次配置从 `configs/build.local.example.json` 创建，已有文件不覆盖。Qt 只读取准备好的本地依赖，缺失时报错，不自动下载。无需拉取或安装 FreeCM，可选插件仍可使用现有项目命令，详见[构建配置](doc/BUILD_CONFIGURATION.md)。

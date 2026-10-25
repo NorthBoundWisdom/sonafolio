@@ -14,6 +14,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
+from configs.build_environment import ensure_local_build_environment, use_build_environment  # noqa: E402
 from configs.generate_xcodeproj import generate_xcodeproj  # noqa: E402
 
 DEFAULT_DATA_ROOT = Path("~/Documents/SpeechToTextData")
@@ -162,7 +163,7 @@ def _ensure_env(root: Path) -> int:
     return 0
 
 
-def main() -> int:
+def _main() -> int:
     root = data_root()
     _ensure_data_dirs(root)
     try:
@@ -243,6 +244,12 @@ def main() -> int:
             "Build app: python3 configs/ios_workflow.py build --platform mac --scheme Audio2TextApp"
         )
     return 0
+
+
+def main() -> int:
+    ensure_local_build_environment(REPO_ROOT)
+    with use_build_environment(REPO_ROOT):
+        return _main()
 
 
 if __name__ == "__main__":

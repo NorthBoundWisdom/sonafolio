@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "policy": "English source prose and interfaces; owner-approved Chinese-first website, user handbook and main README; reviewed translations and ASR language assets. FreeCM remains a third-party submodule.",
+  "policy": "English source prose and interfaces; owner-approved Chinese-first website, user handbook and main README; reviewed translations and ASR language assets. The optional vendored command validator follows the same source policy.",
   "resources": {
     "doc/cloud_prompts/chapterize.zh.md": "Localized ASR/translation prompt, rules, or multilingual fixture data",
     "doc/cloud_prompts/glossary_review.zh.md": "Localized ASR/translation prompt, rules, or multilingual fixture data",

@@ -25,7 +25,7 @@ API key; text read by the agent becomes part of its conversation.
 Clone the repository and initialize its build infrastructure:
 
 ```bash
-git clone --recurse-submodules https://github.com/NorthBoundWisdom/sonafolio.git
+git clone https://github.com/NorthBoundWisdom/sonafolio.git
 cd sonafolio
 python3 configs/setup_local_app.py
 ```
@@ -415,4 +415,9 @@ Original source uses [MIT](LICENSE). Dependencies, models, and media retain thei
 The website, user handbook, and main README default to Chinese. Source prose and interfaces remain English. Reviewed translations, Chinese ASR
 prompts/rules, multilingual fixtures, and original benchmark input names remain as language data.
 `language-assets.json` records their scope; CI rejects new Chinese prose or UI outside those entries.
-FreeCM is an independently maintained third-party submodule.
+Machine-local environments live in ignored root `build.local.json`. Initial setup or Qt Config
+creates it from `configs/build.local.example.json` only when missing. Existing files are preserved.
+Qt consumes prepared local
+dependencies and fails when they are missing; configuration never downloads them. No FreeCM
+checkout or installation is required. Its optional plugin retains project commands; only the
+command validator remains vendored. See [build configuration](doc/BUILD_CONFIGURATION.md).

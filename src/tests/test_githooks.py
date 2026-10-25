@@ -42,8 +42,6 @@ def test_xcode_cloud_post_clone_generates_ignored_project() -> None:
 
     assert script_path.exists()
     assert "CI_PRIMARY_REPOSITORY_PATH" in script
-    assert "source_roots.lock.jsonc.in" in script
-    assert "cp source_roots.lock.jsonc.in source_roots.lock.jsonc" in script
     assert "python3 configs/generate_xcodeproj.py" in script
     assert "Audio2Text.xcodeproj/project.pbxproj" in script
     assert "Audio2TextApp.xcscheme" in script

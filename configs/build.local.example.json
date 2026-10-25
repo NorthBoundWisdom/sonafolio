@@ -1,0 +1,11 @@
+{
+  "environment": {
+    "GEOCONTROLS_SOURCE_ROOT": "",
+    "AUDIO2TEXTQT_QT_PREFIX": "",
+    "VCPKG_ROOT": "",
+    "AUDIO2TEXTQT_FFMPEG_DIR": "",
+    "CMAKE_PREFIX_PATH": "",
+    "XCODE_DEVELOPMENT_TEAM": ""
+  },
+  "path": []
+}

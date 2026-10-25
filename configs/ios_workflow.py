@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import argparse
-import json
 import os
 import plistlib
 import re
@@ -16,6 +15,10 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
+
+from configs.build_environment import use_build_environment  # noqa: E402
+from configs.app_build import load_app_build_settings  # noqa: E402
+
 APP_DIR = REPO_ROOT / "app"
 PRODUCT_NAME = "Audio2TextApp"
 CLI_NAME = "Audio2TextCli"
@@ -29,7 +32,6 @@ DEFAULT_DATA_ROOT = Path("~/Documents/SpeechToTextData")
 APP_ENTITLEMENTS = APP_DIR / "Audio2TextApp.entitlements"
 APP_PRIVACY_MANIFEST = APP_DIR / "PrivacyInfo.xcprivacy"
 MODEL_INVENTORY = REPO_ROOT / "src" / "atot" / "data" / "model_inventory.json"
-SOURCE_ROOTS_ACTIVE_LOCK = REPO_ROOT / "source_roots.lock.jsonc"
 IDENTITY_LINE_PATTERN = re.compile(r'^\s*\d+\)\s+([0-9A-Fa-f]{40})\s+"([^"]+)"')
 NOTARY_PROFILE_ENV = "ATOT_NOTARY_KEYCHAIN_PROFILE"
 
@@ -61,127 +63,9 @@ def _swift_env() -> dict[str, str]:
     return {"CLANG_MODULE_CACHE_PATH": str(module_cache)}
 
 
-def _strip_jsonc_comments(text: str) -> str:
-    result: list[str] = []
-    index = 0
-    in_string = False
-    escaped = False
-    while index < len(text):
-        char = text[index]
-        next_char = text[index + 1] if index + 1 < len(text) else ""
-        if in_string:
-            result.append(char)
-            if escaped:
-                escaped = False
-            elif char == "\\":
-                escaped = True
-            elif char == '"':
-                in_string = False
-            index += 1
-            continue
-        if char == '"':
-            in_string = True
-            result.append(char)
-            index += 1
-            continue
-        if char == "/" and next_char == "/":
-            index += 2
-            while index < len(text) and text[index] not in "\r\n":
-                index += 1
-            continue
-        if char == "/" and next_char == "*":
-            index += 2
-            while index < len(text) - 1:
-                if text[index] == "*" and text[index + 1] == "/":
-                    index += 2
-                    break
-                result.append(text[index] if text[index] in "\r\n" else " ")
-                index += 1
-            continue
-        result.append(char)
-        index += 1
-    return "".join(result)
-
-
-def _strip_jsonc_trailing_commas(text: str) -> str:
-    result: list[str] = []
-    index = 0
-    in_string = False
-    escaped = False
-    while index < len(text):
-        char = text[index]
-        if in_string:
-            result.append(char)
-            if escaped:
-                escaped = False
-            elif char == "\\":
-                escaped = True
-            elif char == '"':
-                in_string = False
-            index += 1
-            continue
-        if char == '"':
-            in_string = True
-            result.append(char)
-            index += 1
-            continue
-        if char == ",":
-            lookahead = index + 1
-            while lookahead < len(text) and text[lookahead].isspace():
-                lookahead += 1
-            if lookahead < len(text) and text[lookahead] in "}]":
-                index += 1
-                continue
-        result.append(char)
-        index += 1
-    return "".join(result)
-
-
-def _load_jsonc(path: Path) -> object:
-    text = _strip_jsonc_trailing_commas(_strip_jsonc_comments(path.read_text(encoding="utf-8")))
-    return json.loads(text)
-
-
-def _require_app_config_string(payload: dict[str, object], key: str, *, path: Path) -> str:
-    app_configs = payload.get("AppConfigs")
-    if not isinstance(app_configs, dict):
-        raise RuntimeError(f"{path.name} is missing AppConfigs")
-    value = app_configs.get(key)
-    if not isinstance(value, str) or not value.strip():
-        raise RuntimeError(f"{path.name} is missing AppConfigs.{key}")
-    normalized = value.strip()
-    if "\r" in normalized or "\n" in normalized:
-        raise RuntimeError(f"{path.name} AppConfigs.{key} cannot contain newlines")
-    return normalized
-
-
 def _app_build_settings() -> dict[str, str]:
-    release_version = os.environ.get("ATOT_RELEASE_VERSION", "")
-    if release_version:
-        if not re.fullmatch(r"\d+\.\d+\.\d+", release_version):
-            raise RuntimeError("ATOT_RELEASE_VERSION must be a numeric major.minor.patch version.")
-        return {"MARKETING_VERSION": release_version, "ARCHIVE_ID": "1"}
-    path = SOURCE_ROOTS_ACTIVE_LOCK
-    if not path.is_file():
-        raise RuntimeError(
-            "Missing active source_roots.lock.jsonc. Run `python3 configs/source_root_workflow.py --init` first."
-        )
-    try:
-        payload = _load_jsonc(path)
-    except json.JSONDecodeError as error:
-        raise RuntimeError(f"Invalid JSON/JSONC in {path.name}: {error}") from error
-    if not isinstance(payload, dict):
-        raise RuntimeError(f"{path.name} must be an object")
-    marketing_version = _require_app_config_string(payload, "MARKETING_VERSION", path=path)
-    archive_id = _require_app_config_string(payload, "ARCHIVE_ID", path=path)
-    if not re.fullmatch(r"\d+(?:\.\d+){0,3}(?:[A-Za-z0-9.+-]*)?", marketing_version):
-        raise RuntimeError(f"Unsupported MARKETING_VERSION in {path.name}: {marketing_version}")
-    if not archive_id.isdigit() or int(archive_id) <= 0:
-        raise RuntimeError(f"Unsupported ARCHIVE_ID in {path.name}: {archive_id}")
-    return {
-        "MARKETING_VERSION": marketing_version,
-        "ARCHIVE_ID": archive_id,
-    }
+    settings = load_app_build_settings(REPO_ROOT)
+    return {key: settings[key] for key in ("MARKETING_VERSION", "ARCHIVE_ID")}
 
 
 def _package_dmg_path(marketing_version: str, archive_id: str) -> Path:
@@ -664,7 +548,7 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main(argv: list[str] | None = None) -> int:
+def _main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
         if args.command == "build":
@@ -703,9 +587,14 @@ def main(argv: list[str] | None = None) -> int:
             if args.distribution == "developer-id":
                 _notarize_dmg(package_dmg, keychain_profile=notary_profile)
         return 0
-    except RuntimeError as error:
+    except (RuntimeError, ValueError) as error:
         print(error, file=sys.stderr)
         return 1
+
+
+def main(argv: list[str] | None = None) -> int:
+    with use_build_environment(REPO_ROOT):
+        return _main(argv)
 
 
 if __name__ == "__main__":

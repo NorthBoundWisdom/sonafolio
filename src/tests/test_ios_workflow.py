@@ -2,21 +2,13 @@ from configs import ios_workflow
 import pytest
 
 
-def test_app_build_settings_read_active_source_roots_lock(tmp_path, monkeypatch):
-    active_lock = tmp_path / "source_roots.lock.jsonc"
-    active_lock.write_text(
-        """
-        {
-          // Active source-root values drive package versions.
-          "AppConfigs": {
-            "MARKETING_VERSION": "2.3.4",
-            "ARCHIVE_ID": "56",
-          }
-        }
-        """,
-        encoding="utf-8",
+def test_app_build_settings_read_shared_app_metadata(tmp_path, monkeypatch):
+    app_settings = tmp_path / "configs/app_build.json"
+    app_settings.parent.mkdir()
+    app_settings.write_text(
+        '{"MARKETING_VERSION": "2.3.4", "ARCHIVE_ID": "56"}', encoding="utf-8"
     )
-    monkeypatch.setattr(ios_workflow, "SOURCE_ROOTS_ACTIVE_LOCK", active_lock)
+    monkeypatch.setattr(ios_workflow, "REPO_ROOT", tmp_path)
 
     assert ios_workflow._app_build_settings() == {
         "MARKETING_VERSION": "2.3.4",

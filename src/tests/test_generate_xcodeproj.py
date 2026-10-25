@@ -10,22 +10,13 @@ def _prepare_minimal_project(tmp_path, monkeypatch, *, app_configs: str) -> tupl
     core_dir = tmp_path / "app" / "Sources" / "Audio2TextCore"
     ios_dir = tmp_path / "app" / "Sources" / "Audio2TextiOS"
     test_dir = tmp_path / "app" / "Tests" / "Audio2TextAppTests"
-    active_lock = tmp_path / "source_roots.lock.jsonc"
+    app_settings = tmp_path / "configs/app_build.json"
+    app_settings.parent.mkdir()
     source_dir.mkdir(parents=True)
     core_dir.mkdir(parents=True)
     ios_dir.mkdir(parents=True)
     test_dir.mkdir(parents=True)
-    active_lock.write_text(
-        f"""{{
-  "schemaVersion": 5,
-  "AppConfigs": {app_configs},
-  "depsMode": "pinned",
-  "depsManualPath": {{}},
-  "dependencies": {{}}
-}}
-""",
-        encoding="utf-8",
-    )
+    app_settings.write_text(app_configs, encoding="utf-8")
     (core_dir / "Core.swift").write_text("import Foundation\n", encoding="utf-8")
     (source_dir / "Audio2TextApp.swift").write_text("import SwiftUI\n", encoding="utf-8")
     (source_dir / "ReadingStyleSettings.swift").write_text(
@@ -46,7 +37,6 @@ def _prepare_minimal_project(tmp_path, monkeypatch, *, app_configs: str) -> tupl
     monkeypatch.setattr(generate_xcodeproj, "APP_SOURCE_DIR", source_dir)
     monkeypatch.setattr(generate_xcodeproj, "IOS_SOURCE_DIR", ios_dir)
     monkeypatch.setattr(generate_xcodeproj, "APP_TEST_DIR", test_dir)
-    monkeypatch.setattr(generate_xcodeproj, "SOURCE_ROOTS_ACTIVE_LOCK", active_lock)
     monkeypatch.setattr(
         generate_xcodeproj,
         "SCHEME_FILE",
@@ -61,7 +51,6 @@ def test_generate_xcodeproj_writes_root_project(tmp_path, monkeypatch):
         tmp_path,
         monkeypatch,
         app_configs="""{
-    "DevMode": false,
     "XCODE_DEVELOPMENT_TEAM": "9TBG64SL5U",
     "MARKETING_VERSION": "2.3.4",
     "ARCHIVE_ID": "56"
@@ -111,7 +100,6 @@ def test_generate_xcodeproj_preserves_existing_workspace_user_state(tmp_path, mo
         tmp_path,
         monkeypatch,
         app_configs="""{
-    "DevMode": false,
     "MARKETING_VERSION": "2.3.4",
     "ARCHIVE_ID": "56"
   }""",
@@ -139,7 +127,6 @@ def test_generate_xcodeproj_allows_missing_development_team(tmp_path, monkeypatc
         tmp_path,
         monkeypatch,
         app_configs="""{
-    "DevMode": false,
     "MARKETING_VERSION": "2.3.4",
     "ARCHIVE_ID": "56"
   }""",

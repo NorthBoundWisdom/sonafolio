@@ -31,15 +31,7 @@ endif()
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2 QuickDialogs2 Svg QuickTest)
 qt_standard_project_setup(REQUIRES 6.8)
 
-set(GEOCONTROLS_SOURCE_ROOT "$ENV{GEOCONTROLS_SOURCE_ROOT}" CACHE PATH "FreeCM GeoControls source root")
-if(NOT EXISTS "${GEOCONTROLS_SOURCE_ROOT}/Controls/CMakeLists.txt")
-    message(FATAL_ERROR "GeoControls source root is required. Run python configs/source_roots.py init-seeds, then materialize; configure through configs/qt_workflow.py.")
-endif()
-set(GEOCONTROLS_BUILD_DEMO OFF CACHE BOOL "Only build the reusable controls" FORCE)
-set(GEOCONTROLS_INSTALL_SDK OFF CACHE BOOL "Consume GeoControls from its source root" FORCE)
-add_subdirectory("${GEOCONTROLS_SOURCE_ROOT}" "${CMAKE_CURRENT_BINARY_DIR}/_deps/geocontrols")
-add_library(GeoControls::Controls ALIAS GeoControlsControls)
-add_library(GeoControls::AppShell ALIAS GeoControlsAppShell)
+include(cmake/GeoControls.cmake)
 
 qt_add_executable(Audio2TextQt
     src/AppPaths.cpp

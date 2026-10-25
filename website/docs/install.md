@@ -91,10 +91,10 @@ chmod +x SonaFolioQt-v0.9.0-Linux-x86_64.AppImage
 
 ## 从源码配置 CLI {#set-up-the-cli-from-source}
 
-要求 Python 3.10+，CI 使用 Python 3.13。递归克隆仓库，保留构建基础设施：
+要求 Python 3.10+，CI 使用 Python 3.13。克隆仓库即可，必要构建工具已随源码收录：
 
 ```bash
-git clone --recurse-submodules https://github.com/NorthBoundWisdom/sonafolio.git
+git clone https://github.com/NorthBoundWisdom/sonafolio.git
 cd sonafolio
 python3 configs/setup_local_app.py
 ```

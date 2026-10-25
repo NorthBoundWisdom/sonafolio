@@ -74,7 +74,6 @@ target-version = "py310"
 cache-dir = "~/Documents/SpeechToTextData/cache/ruff"
 extend-exclude = [
   "Downloads",
-  "FreeCM",
   "build",
   "app/.build"
 ]

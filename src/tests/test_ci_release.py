@@ -15,7 +15,7 @@ def test_release_metadata_cli_does_not_require_source_root_submodules(tmp_path):
     configs.mkdir()
     (configs / '__init__.py').write_text('')
     source = ci_release.ROOT / 'configs'
-    for name in ('ci_release.py', 'release_licenses.py'):
+    for name in ('ci_release.py', 'release_licenses.py', 'build_environment.py'):
         shutil.copy2(source / name, configs / name)
     result = subprocess.run([sys.executable, str(configs / 'ci_release.py'), '--help'],
                             cwd=tmp_path, capture_output=True, text=True, check=False)

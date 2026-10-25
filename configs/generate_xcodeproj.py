@@ -1,16 +1,20 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-import json
 import re
+import sys
 from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from configs.app_build import load_app_build_settings  # noqa: E402
+
 PROJECT_PATH = REPO_ROOT / "Audio2Text.xcodeproj"
 PROJECT_FILE = PROJECT_PATH / "project.pbxproj"
 SCHEME_FILE = PROJECT_PATH / "xcshareddata" / "xcschemes" / "Audio2TextApp.xcscheme"
-SOURCE_ROOTS_ACTIVE_LOCK = REPO_ROOT / "source_roots.lock.jsonc"
 CORE_SOURCE_DIR = REPO_ROOT / "app" / "Sources" / "Audio2TextCore"
 APP_SOURCE_DIR = REPO_ROOT / "app" / "Sources" / "Audio2TextApp"
 IOS_SOURCE_DIR = REPO_ROOT / "app" / "Sources" / "Audio2TextiOS"
@@ -80,105 +84,8 @@ def _workspace_data() -> str:
 """
 
 
-def _strip_jsonc_comments(text: str) -> str:
-    result: list[str] = []
-    index = 0
-    in_string = False
-    escaped = False
-    while index < len(text):
-        char = text[index]
-        next_char = text[index + 1] if index + 1 < len(text) else ""
-        if in_string:
-            result.append(char)
-            if escaped:
-                escaped = False
-            elif char == "\\":
-                escaped = True
-            elif char == '"':
-                in_string = False
-            index += 1
-            continue
-        if char == '"':
-            in_string = True
-            result.append(char)
-            index += 1
-            continue
-        if char == "/" and next_char == "/":
-            index += 2
-            while index < len(text) and text[index] not in "\r\n":
-                index += 1
-            continue
-        if char == "/" and next_char == "*":
-            index += 2
-            while index < len(text) - 1:
-                if text[index] == "*" and text[index + 1] == "/":
-                    index += 2
-                    break
-                result.append(text[index] if text[index] in "\r\n" else " ")
-                index += 1
-            continue
-        result.append(char)
-        index += 1
-    return "".join(result)
-
-
-def _strip_jsonc_trailing_commas(text: str) -> str:
-    result: list[str] = []
-    index = 0
-    in_string = False
-    escaped = False
-    while index < len(text):
-        char = text[index]
-        if in_string:
-            result.append(char)
-            if escaped:
-                escaped = False
-            elif char == "\\":
-                escaped = True
-            elif char == '"':
-                in_string = False
-            index += 1
-            continue
-        if char == '"':
-            in_string = True
-            result.append(char)
-            index += 1
-            continue
-        if char == ",":
-            lookahead = index + 1
-            while lookahead < len(text) and text[lookahead].isspace():
-                lookahead += 1
-            if lookahead < len(text) and text[lookahead] in "}]":
-                index += 1
-                continue
-        result.append(char)
-        index += 1
-    return "".join(result)
-
-
 def _active_app_configs() -> dict[str, str]:
-    if not SOURCE_ROOTS_ACTIVE_LOCK.is_file():
-        return {"MARKETING_VERSION": "0.0.0", "ARCHIVE_ID": "1", DEVELOPMENT_TEAM_KEY: ""}
-    payload = json.loads(
-        _strip_jsonc_trailing_commas(
-            _strip_jsonc_comments(SOURCE_ROOTS_ACTIVE_LOCK.read_text(encoding="utf-8"))
-        )
-    )
-    app_configs = payload.get("AppConfigs", {}) if isinstance(payload, dict) else {}
-    marketing_version = str(app_configs.get("MARKETING_VERSION", "0.0.0")).strip() or "0.0.0"
-    archive_id = str(app_configs.get("ARCHIVE_ID", "1")).strip() or "1"
-    development_team = str(app_configs.get(DEVELOPMENT_TEAM_KEY, "")).strip()
-    if not re.fullmatch(r"\d+(?:\.\d+){0,3}(?:[A-Za-z0-9.+-]*)?", marketing_version):
-        marketing_version = "0.0.0"
-    if not archive_id.isdigit() or int(archive_id) <= 0:
-        archive_id = "1"
-    if development_team and not re.fullmatch(r"[A-Za-z0-9]{10}", development_team):
-        development_team = ""
-    return {
-        "MARKETING_VERSION": marketing_version,
-        "ARCHIVE_ID": archive_id,
-        DEVELOPMENT_TEAM_KEY: development_team,
-    }
+    return load_app_build_settings(REPO_ROOT)
 
 
 class _IdFactory:

@@ -9,8 +9,6 @@ module and scheme identities remain compatible, as documented in [branding](../d
 From the repository root:
 
 ```bash
-git submodule update --init --recursive FreeCM
-python3 configs/source_root_workflow.py --init
 python3 configs/setup_local_app.py
 python3 configs/ios_workflow.py build --platform mac --scheme Audio2TextApp --configuration debug --distribution local
 python3 configs/ios_workflow.py run --platform mac --scheme Audio2TextApp

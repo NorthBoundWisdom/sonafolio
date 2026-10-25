@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Callable, Iterable
 
 ROOT = Path(__file__).resolve().parents[2]
-LOCAL_SECRET_FILES = frozenset({"app/cloud.local.json", "config.toml", ".codex/config.toml"})
+LOCAL_SECRET_FILES = frozenset({"app/cloud.local.json", "config.toml", ".codex/config.toml", "build.local.json"})
 API_KEY_LIKE_PATTERNS = (
     ("API-key-like secret", re.compile(r"\bsk-[A-Za-z0-9][A-Za-z0-9_-]{20,}\b")),
     ("GitHub token", re.compile(r"\b(?:gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{30,})\b")),

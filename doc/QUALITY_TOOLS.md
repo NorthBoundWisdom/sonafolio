@@ -93,8 +93,8 @@ warnings. The Qt target enables `/W4` with MSVC and `-Wall -Wextra -Wpedantic` w
 single-config CMake generators receive `CMAKE_BUILD_TYPE` from the requested configuration.
 Configuration also refreshes cached Qt package directories and feature flags so existing builds
 use the selected SDK without retaining feature values from an older Qt installation.
-macOS FreeCM discovery now points to Qt 6.12.0. The Windows Qt path retains the supplied 6.11.2
-configuration pending validation on Windows.
+SDK discovery uses explicit options, environment variables, PATH and the current CMake cache.
+Machine-specific SDK locations are not part of the committed application build configuration.
 
 The Ruff rule selection is explicit in `pyproject.toml`, preserving the established `E4`, `E7`,
 `E9`, and `F` gate across changes to Ruff's default rules. The App targets currently define no

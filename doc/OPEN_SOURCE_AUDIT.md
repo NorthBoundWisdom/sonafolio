@@ -4,6 +4,12 @@ Scope: the current host source and checked-out FreeCM submodule, reviewed on 202
 Git history was excluded. Generated runtime data, model weights, media and private local settings
 are not release source. This records fixes and the release boundary; it is not a legal certification.
 
+Update on 2026-10-25: FreeCM and its source-root lock system are removed. Qt consumes
+prepared local sources; ignored root `build.local.json` supplies the machine environment.
+Only the optional plugin command validator remains vendored with its MIT license
+and upstream hashes. Editor project commands remain available. The findings below
+describe the original audit snapshot.
+
 | Finding | Resolution | Regression evidence |
 |---|---|---|
 | Episode/subscription IDs could escape storage roots and delete arbitrary directories | Shared ASCII identifier validation and root confinement cover library and task operations. Managed child symlinks and metadata identity mismatches are rejected. Deletion validates local targets before removing library records. | `test_storage_security.py` |
@@ -14,7 +20,7 @@ are not release source. This records fixes and the release boundary; it is not a
 | Local runtime and credential paths were not all ignored | Root materials/work/library/cache/config, local Codex config, environment secrets and mypy cache are ignored. Public environment templates remain allowed. | `.gitignore` inspected |
 | Public-source check ignored historical notes, unstaged tracked content and submodules; logs could expose matched tokens | Explicit staged/worktree/both scopes, current submodule recursion, Windows/Linux/macOS user paths, additional token/private-key patterns and masked output. Commit hook scans the staged source. | `test_check_public_paths.py`; full current-source check |
 | Python 3.10 imported unavailable stdlib tomllib | Shared compatibility module uses tomli on Python 3.10 and stdlib tomllib on newer Python; conditional dependency declared. | Full Python 3.10 suite |
-| Public template carried a personal signing team | Public team default is empty. Signing configuration belongs in ignored generated local settings. | `source_roots.lock.jsonc.in` |
+| Public template carried a personal signing team | Public team default is empty. Signing configuration belongs in ignored generated local settings. | Public defaults now live in `configs/app_build.json` |
 | Gold text provenance could drift with the mirror's default branch | Metadata pins the mirror revision, split, row indices, stable clip names, sentence/reference hashes and CC0 links. Reference text and measured historical results are unchanged. | Mirror text rows matched to existing reference fixtures; no audio downloaded |
 
 ## Validation

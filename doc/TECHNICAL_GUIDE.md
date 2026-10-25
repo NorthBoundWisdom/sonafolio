@@ -6,7 +6,7 @@ This guide follows current source interfaces. See the [README](../README.md) for
 ## Initialize
 
 ```bash
-git clone --recurse-submodules https://github.com/NorthBoundWisdom/sonafolio.git
+git clone https://github.com/NorthBoundWisdom/sonafolio.git
 cd sonafolio
 python3 configs/setup_local_app.py
 source ~/Documents/SpeechToTextData/env/bin/activate
@@ -34,7 +34,7 @@ Windows uses the data-root `env\Scripts\python.exe`; run tests with `python -m p
 | `configs/` | Setup, project generation, builds, installers |
 | `website/` | English product site and handbook |
 | `doc/experiments/` | Dated measurements; preserve original results |
-| `FreeCM/` | Third-party build infrastructure at a pinned gitlink |
+| `configs/_vendor/` | Optional FreeCM command validator, upstream provenance and license |
 
 `WorkflowService` provides `run_transcribe()`, `run_import_xiaoyuzhou()`, `run_qa()`, `run_repair()`,
 `run_cloud_prepare()`, `run_cloud_summarize()`, `run_srt()`, `run_subscriptions()`, and `run_library_*()`.
@@ -60,7 +60,6 @@ swift build -c release --scratch-path ../build/swiftpm --product Audio2TextApp
 From the repository root:
 
 ```bash
-python3 configs/source_root_workflow.py --init
 python3 configs/setup_local_app.py
 python3 configs/ios_workflow.py build --platform mac --scheme Audio2TextApp --configuration debug --distribution local
 python3 configs/ios_workflow.py run --platform mac --scheme Audio2TextApp
@@ -72,8 +71,6 @@ is ignored; do not maintain it as source.
 Qt:
 
 ```bash
-python3 configs/source_roots.py init-seeds --quiet
-python3 configs/source_roots.py materialize --quiet
 python3 configs/qt_workflow.py config --configuration Release --qt-prefix <Qt-prefix>
 python3 configs/qt_workflow.py smoke --configuration Release
 ctest --test-dir build/Audio2TextQt -C Release --output-on-failure
