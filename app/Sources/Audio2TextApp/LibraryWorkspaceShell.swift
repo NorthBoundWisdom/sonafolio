@@ -53,7 +53,7 @@ struct LibraryWorkspaceDetailHeader<Controls: View>: View {
             .frame(minWidth: 0, maxWidth: 520)
             .frame(maxWidth: .infinity)
             .padding(.horizontal, 12)
-            .frame(height: 42)
+            .frame(height: AppControlMetrics.toolbarHeight)
     }
 }
 

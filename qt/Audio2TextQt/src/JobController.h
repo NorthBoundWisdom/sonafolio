@@ -48,6 +48,7 @@ public:
     Q_INVOKABLE void importXiaoyuzhou(const QString &url, const QString &groupName, bool download);
     Q_INVOKABLE void addSubscription(const QString &url, const QString &groupName, int limit);
     Q_INVOKABLE void refreshSubscriptions(bool refreshAll, const QString &subscriptionId, int limit);
+    Q_INVOKABLE void fetchSubscriptionHistory(const QString &subscriptionId);
     Q_INVOKABLE void removeSubscription(const QString &subscriptionId);
     Q_INVOKABLE void listSubscriptions();
     Q_INVOKABLE void configList();

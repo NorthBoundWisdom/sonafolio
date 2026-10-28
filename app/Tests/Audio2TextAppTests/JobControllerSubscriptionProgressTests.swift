@@ -4,6 +4,67 @@ import XCTest
 
 @MainActor
 final class JobControllerSubscriptionProgressTests: XCTestCase {
+    func testAddSubscriptionCompletionReportsSuccessAfterClearingBusyState() async throws {
+        let root = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(UUID().uuidString)
+        _ = try configureLocalTestLibrary(dataRoot: root)
+        let runner = SubscriptionProgressProcessRunner()
+        let runtime = RuntimeContext(
+            dataRoot: root,
+            workingDirectory: root.appendingPathComponent("cache"),
+            cli: root.appendingPathComponent("Audio2TextCli"),
+            environment: ["ATOT_TEST": "1"]
+        )
+        let controller = JobController(
+            settingsStore: AppSettingsStore(dataRoot: root, credentials: MemoryCloudCredentials()),
+            runner: runner,
+            runtimeProvider: { runtime },
+            loadsLibrarySynchronously: true
+        )
+        controller.subscriptionURLText = "https://example.com/feed.xml"
+        controller.subscriptionGroupName = "Research"
+        var result: Bool?
+
+        controller.addSubscription {
+            result = $0
+            XCTAssertFalse(controller.isAddingSubscription)
+        }
+        await controller.currentTask?.value
+
+        XCTAssertEqual(result, true)
+        XCTAssertEqual(controller.subscriptionURLText, "")
+        XCTAssertEqual(
+            runner.subscriptionArguments,
+            [["add", "https://example.com/feed.xml", "--group-name", "Research", "--limit", "10", "--json"]]
+        )
+    }
+
+    func testImmediateAddFailureReportsCompletionAndPreservesDraft() async throws {
+        let root = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(UUID().uuidString)
+        _ = try configureLocalTestLibrary(dataRoot: root)
+        let controller = JobController(
+            settingsStore: AppSettingsStore(dataRoot: root, credentials: MemoryCloudCredentials()),
+            runtimeProvider: {
+                throw NSError(
+                    domain: "SubscriptionTests", code: 1,
+                    userInfo: [NSLocalizedDescriptionKey: "Subscription runtime is unavailable"]
+                )
+            },
+            loadsLibrarySynchronously: true
+        )
+        controller.subscriptionURLText = "https://example.com/feed.xml"
+        var result: Bool?
+
+        controller.addSubscription {
+            result = $0
+            XCTAssertFalse(controller.isAddingSubscription)
+        }
+        await controller.currentTask?.value
+
+        XCTAssertEqual(result, false)
+        XCTAssertEqual(controller.subscriptionURLText, "https://example.com/feed.xml")
+        XCTAssertEqual(controller.message, "Subscription runtime is unavailable")
+    }
+
     func testRefreshAllSubscriptionsPublishesSidebarProgressAndRunsEachSubscription() async throws {
         let root = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(UUID().uuidString)
         let libraryRoot = try configureLocalTestLibrary(dataRoot: root)

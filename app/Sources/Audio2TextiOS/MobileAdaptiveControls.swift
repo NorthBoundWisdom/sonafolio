@@ -3,76 +3,6 @@ import SwiftUI
     import Audio2TextCore
 #endif
 
-struct MobileReaderActionButton: View {
-    let title: String
-    let systemName: String
-    var role: ButtonRole?
-    var isDisabled = false
-    let action: () -> Void
-
-    var body: some View {
-        Button(role: role, action: action) {
-            VStack(spacing: 2) {
-                Image(systemName: systemName)
-                    .font(.system(size: 15, weight: .semibold))
-                Text(title)
-                    .font(.caption2.weight(.medium))
-            }
-            .frame(width: 42, height: 40)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .foregroundStyle(foregroundStyle)
-        .disabled(isDisabled)
-        .accessibilityLabel(title)
-    }
-
-    private var foregroundStyle: Color {
-        if isDisabled {
-            return Color.secondary.opacity(0.45)
-        }
-        if role == .destructive {
-            return Color.red
-        }
-        return Color.primary
-    }
-}
-
-struct MobileInlineBackButton: View {
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            Image(systemName: "chevron.left")
-                .font(.system(size: 17, weight: .semibold))
-                .frame(width: 38, height: 38)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Back")
-    }
-}
-
-struct MobileIconButton: View {
-    let systemName: String
-    let label: String
-    var isDisabled = false
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            Image(systemName: systemName)
-                .font(.system(size: 17, weight: .semibold))
-                .frame(width: 34, height: 34)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .foregroundStyle(isDisabled ? Color.secondary.opacity(0.45) : Color.primary)
-        .disabled(isDisabled)
-        .accessibilityLabel(label)
-    }
-}
-
 struct MobileAdaptiveStatusFooter: View {
     @ObservedObject var store: MobileLibraryViewModel
 
@@ -84,7 +14,7 @@ struct MobileAdaptiveStatusFooter: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 8)
-                    .background(Color.mobileSearchBackground, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .background(Color.mobileSearchBackground, in: RoundedRectangle(cornerRadius: AppControlMetrics.cornerRadius, style: .continuous))
             } else if !store.statusMessage.isEmpty {
                 Text(store.statusMessage)
                     .font(.footnote)
@@ -94,7 +24,7 @@ struct MobileAdaptiveStatusFooter: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 8)
-                    .background(Color.mobileSearchBackground, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .background(Color.mobileSearchBackground, in: RoundedRectangle(cornerRadius: AppControlMetrics.cornerRadius, style: .continuous))
             }
         }
     }
@@ -168,30 +98,4 @@ func mobileClean(_ value: String?) -> String? {
     guard let value else { return nil }
     let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
     return trimmed.isEmpty ? nil : trimmed
-}
-
-extension Color {
-    static var mobileShellBackground: Color {
-        Color(.systemGroupedBackground)
-    }
-
-    static var mobilePanelBackground: Color {
-        Color(.secondarySystemGroupedBackground)
-    }
-
-    static var mobileContentBackground: Color {
-        Color(.systemGroupedBackground)
-    }
-
-    static var mobileReaderBackground: Color {
-        Color(.systemBackground)
-    }
-
-    static var mobileSearchBackground: Color {
-        Color(.tertiarySystemGroupedBackground)
-    }
-
-    static var mobileDivider: Color {
-        Color(.separator)
-    }
 }

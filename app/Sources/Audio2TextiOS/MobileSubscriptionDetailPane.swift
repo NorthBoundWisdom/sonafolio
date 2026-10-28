@@ -58,24 +58,24 @@ struct MobileSubscriptionDetailPane: View {
             .frame(maxWidth: .infinity, alignment: .leading)
 
             HStack(spacing: 4) {
-                MobileReaderActionButton(title: "Copy", systemName: "link") {
+                AppLabeledIconButton(title: "Copy", systemName: "link") {
                     onCopyLink(subscription)
                 }
-                MobileReaderActionButton(
+                AppLabeledIconButton(
                     title: "Refresh",
                     systemName: "arrow.clockwise",
                     isDisabled: isRefreshing
                 ) {
                     onRefresh(subscription)
                 }
-                MobileReaderActionButton(
+                AppLabeledIconButton(
                     title: "History",
                     systemName: "clock.arrow.circlepath",
                     isDisabled: isRefreshing
                 ) {
                     onFetchHistory(subscription)
                 }
-                MobileReaderActionButton(
+                AppLabeledIconButton(
                     title: "Remove",
                     systemName: "trash",
                     role: .destructive,
@@ -114,7 +114,7 @@ struct MobileSubscriptionDetailPane: View {
                             .padding(.horizontal, 12)
                             .padding(.vertical, 8)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(Color.mobileSearchBackground, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                            .background(Color.mobileSearchBackground, in: RoundedRectangle(cornerRadius: AppControlMetrics.cornerRadius, style: .continuous))
                     }
                 }
             }
@@ -133,7 +133,7 @@ struct MobileSubscriptionDetailPane: View {
                 metadataRow(title: "Last Checked", value: mobileClean(subscription.lastCheckedAt) ?? "None")
             }
             .padding(14)
-            .background(Color.mobileSearchBackground, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .background(Color.mobileSearchBackground, in: RoundedRectangle(cornerRadius: AppControlMetrics.cornerRadius, style: .continuous))
         }
     }
 
@@ -172,6 +172,6 @@ private struct MobileSubscriptionStat: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(12)
-        .background(Color.mobileSearchBackground, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .background(Color.mobileSearchBackground, in: RoundedRectangle(cornerRadius: AppControlMetrics.cornerRadius, style: .continuous))
     }
 }

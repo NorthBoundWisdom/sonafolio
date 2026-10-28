@@ -36,7 +36,7 @@ struct MobileSourcePanel: View {
                         }
                     }
 
-                    HStack(spacing: 8) {
+                    HStack(spacing: AppControlMetrics.controlSpacing) {
                         Text("Folders")
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(.secondary)
@@ -77,7 +77,7 @@ struct MobileSourcePanel: View {
                         store.refreshSyncStatus()
                     }
 
-                    MobileIconButton(systemName: "gearshape", label: "Settings") {
+                    AppIconButton(systemName: "gearshape", label: "Settings") {
                         isShowingSettings = true
                     }
                 }
@@ -106,7 +106,7 @@ private struct MobileSourceHeader: View {
                         store.refreshSyncStatus()
                     }
 
-                    MobileIconButton(systemName: "gearshape", label: "Settings") {
+                    AppIconButton(systemName: "gearshape", label: "Settings") {
                         isShowingSettings = true
                     }
                 }
@@ -141,15 +141,12 @@ private struct MobileSyncStatusIconButton: View {
     let refresh: () -> Void
 
     var body: some View {
-        Button(action: refresh) {
-            Image(systemName: mobileSyncStatusSystemImage(for: status.state))
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(mobileSyncStatusTint(for: status.state))
-                .frame(width: 30, height: 30)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Sync status: \(status.title)")
+        AppIconButton(
+            systemName: mobileSyncStatusSystemImage(for: status.state),
+            label: "Sync status: \(status.title)",
+            foregroundColor: mobileSyncStatusTint(for: status.state),
+            action: refresh
+        )
         .accessibilityHint(status.detail)
     }
 }
@@ -160,7 +157,7 @@ struct MobileSyncStatusPill: View {
 
     var body: some View {
         Button(action: refresh) {
-            HStack(spacing: 8) {
+            HStack(spacing: AppControlMetrics.controlSpacing) {
                 Image(systemName: mobileSyncStatusSystemImage(for: status.state))
                     .font(.system(size: 14, weight: .semibold))
                     .frame(width: 18)
@@ -180,9 +177,9 @@ struct MobileSyncStatusPill: View {
             .foregroundStyle(mobileSyncStatusTint(for: status.state))
             .padding(.horizontal, 10)
             .padding(.vertical, 8)
-            .background(Color.mobileSearchBackground, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .appRowSurface(background: Color.mobileSearchBackground)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(AppRowButtonStyle())
         .accessibilityLabel("Sync status: \(status.title)")
         .accessibilityHint(status.detail)
     }
@@ -190,6 +187,8 @@ struct MobileSyncStatusPill: View {
 
 private func mobileSyncStatusSystemImage(for state: LibrarySyncStatus.State) -> String {
     switch state {
+    case .checking:
+        return "icloud"
     case .syncing:
         return "arrow.triangle.2.circlepath.icloud"
     case .offline:
@@ -201,6 +200,8 @@ private func mobileSyncStatusSystemImage(for state: LibrarySyncStatus.State) -> 
 
 private func mobileSyncStatusTint(for state: LibrarySyncStatus.State) -> Color {
     switch state {
+    case .checking:
+        return .secondary
     case .syncing:
         return .blue
     case .offline:
@@ -256,14 +257,10 @@ private struct MobileSourceRow: View {
                     .background(Color.secondary.opacity(0.12), in: Capsule())
             }
             .padding(.horizontal, 10)
-            .frame(maxWidth: .infinity, minHeight: 46, alignment: .leading)
-            .background(
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(isSelected ? Color.accentColor.opacity(0.14) : Color.clear)
-            )
-            .contentShape(Rectangle())
+            .frame(maxWidth: .infinity, minHeight: AppControlMetrics.Sidebar.sourceRowHeight, alignment: .leading)
+            .appRowSurface(isSelected: isSelected)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(AppRowButtonStyle())
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }

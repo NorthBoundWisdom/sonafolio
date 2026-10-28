@@ -32,25 +32,13 @@ struct ProcessSidebarView: View {
     @State var renamingGroupName = ""
     @State var newGroupName = ""
     @State var presentedProcessingReport: ProcessingReport?
+    @State var isAddSubscriptionPresented = false
     @State private var statusContentHeight: CGFloat = 96
 
     var controller: JobController {
         store.job
     }
 
-    enum SidebarMetrics {
-        static let sectionSpacing: CGFloat = 10
-        static let rowSpacing: CGFloat = 2
-        static let sourceRowHeight: CGFloat = 30
-        static let itemRowHeight: CGFloat = 28
-        static let sourceIconSize: CGFloat = 19
-        static let sourceIconFrame: CGFloat = 22
-        static let rowCornerRadius: CGFloat = 7
-        static let rowHorizontalPadding: CGFloat = 8
-        static let titleFontSize: CGFloat = 14
-        static let countFontSize: CGFloat = 12
-        static let headerFontSize: CGFloat = 12
-    }
 
     private var boundedStatusPanel: some View {
         ScrollView {
@@ -148,6 +136,9 @@ struct ProcessSidebarView: View {
             }
         } message: { groupName in
             Text("This removes the \(groupName) label and moves its items to \(ProcessLibrary.defaultGroupName). Episodes and files are preserved.")
+        }
+        .sheet(isPresented: $isAddSubscriptionPresented) {
+            AddSubscriptionSheet(controller: controller)
         }
         .sheet(item: $presentedProcessingReport) { report in
             ProcessingReportDialog(report: report)

@@ -37,9 +37,9 @@ final class LibraryWindowToolbar: NSObject, NSToolbarDelegate {
     func updateStatusContent() {
         guard let content = controller?.statusContent else { return }
         if let statusHost {
-            statusHost.rootView = content
+            statusHost.rootView = AnyView(content.appControlTheme())
         } else {
-            let host = NSHostingController(rootView: content)
+            let host = NSHostingController(rootView: AnyView(content.appControlTheme()))
             statusHost = host
             statusPopover.contentViewController = host
             statusPopover.behavior = .transient
@@ -102,7 +102,7 @@ final class LibraryWindowToolbar: NSObject, NSToolbarDelegate {
             let button = NSButton(title: "Status", target: self, action: #selector(showStatus(_:)))
             button.image = NSImage(systemSymbolName: "info.circle", accessibilityDescription: "Application Status")
             button.imagePosition = .imageOnly
-            button.bezelStyle = .texturedRounded
+            AppNativeControls.configureToolbarButton(button)
             button.setAccessibilityLabel("Application Status")
             item.view = button
             return item

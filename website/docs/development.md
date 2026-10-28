@@ -24,7 +24,7 @@ python3 configs/qt_workflow.py smoke --configuration Release
 
 本机环境集中写在不进入 Git 跟踪的根目录 `build.local.json`：首次运行本地设置脚本或 Qt Config 时，会从 `configs/build.local.example.json` 创建缺失的文件；已有文件不覆盖。模板中的路径留空，填写本机配置后再运行 Config。`environment` 设置 SDK、GeoControls 路径、签名和版本变量，`path` 列出补充的工具目录。Swift、Qt、CI 脚本和可选 FreeCM 插件命令共用读取逻辑，无需生成锁文件。
 
-Qt 只使用 `GEOCONTROLS_SOURCE_ROOT` 指定的本地 GeoControls 检出；路径缺失或无效时立即报错，不自动下载。Qt SDK 可用 `AUDIO2TEXTQT_QT_PREFIX` 设置；工作流也支持 `--qt-prefix` 和 `--geocontrols-source` 显式参数。CI 在单独的检出步骤准备固定提交，Qt 安装包记录实际提交并包含 MIT 许可。无需拉取或安装 FreeCM，插件的 Config、Build、Run、Test、Package 接线保留。
+Qt Config 会把 `configs/dependencies.json` 固定的 GeoControls 提交拉取到 `build/dependencies/GeoControls`，Build 使用该检出；已有本地修改的检出不会被覆盖，而是直接报错。`GEOCONTROLS_SOURCE_ROOT` 或 `--geocontrols-source` 指向其他目录时按原样使用，不会拉取。Qt SDK 可用 `AUDIO2TEXTQT_QT_PREFIX` 设置；工作流也支持 `--qt-prefix` 和 `--geocontrols-source` 显式参数。CI 在单独的检出步骤准备同一固定提交，Qt 安装包记录实际提交并包含 MIT 许可。无需拉取或安装 FreeCM，插件的 Config、Build、Run、Test、Package 接线保留。
 
 ## 测试与文档
 

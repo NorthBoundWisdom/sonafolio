@@ -73,6 +73,7 @@ qt_add_qml_module(Audio2TextQt
         qml/DetailPane.qml
         qml/MarkdownView.qml
         qml/SubscriptionDetailPane.qml
+        qml/AddSubscriptionDialog.qml
         qml/ImportDialog.qml
         qml/SettingsDialog.qml
         qml/JobLogPane.qml

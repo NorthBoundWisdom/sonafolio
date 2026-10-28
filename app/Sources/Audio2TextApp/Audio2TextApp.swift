@@ -73,6 +73,7 @@ struct Audio2TextApp: App {
     var body: some Scene {
         WindowGroup("SonaFolio") {
             ContentView(store: store)
+                .appControlTheme()
                 .frame(minWidth: 980, minHeight: 680)
                 .onAppear {
                     NSApp.setActivationPolicy(.regular)

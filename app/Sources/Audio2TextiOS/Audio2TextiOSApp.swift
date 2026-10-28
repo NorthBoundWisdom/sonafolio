@@ -19,6 +19,7 @@ struct Audio2TextiOSApp: App {
     var body: some Scene {
         WindowGroup {
             MobileLibraryView(store: store)
+                .appControlTheme()
         }
     }
 }
@@ -40,7 +41,7 @@ final class MobileLibraryViewModel: ObservableObject {
     @Published var isRefreshing = false
     @Published private(set) var libraryRoot: URL?
     @Published private(set) var libraryLocationDescription = ""
-    @Published private(set) var librarySyncStatus = LibrarySyncStatus.unavailable()
+    @Published private(set) var librarySyncStatus = LibrarySyncStatus.checking()
 
     private let libraryAccessStore = MobileLibraryAccessStore()
     private var selectedLibraryAccess: MobileLibraryAccess?
@@ -113,7 +114,7 @@ final class MobileLibraryViewModel: ObservableObject {
             subscriptions = []
             groupNames = []
             lastLoadedManifestSignature = nil
-            librarySyncStatus = .unavailable()
+            librarySyncStatus = .notConfigured()
             return
         }
         do {
@@ -146,7 +147,7 @@ final class MobileLibraryViewModel: ObservableObject {
         guard let libraryRoot else {
             syncStatusRefreshTask?.cancel()
             syncStatusRefreshTask = nil
-            librarySyncStatus = .unavailable()
+            librarySyncStatus = .notConfigured()
             return
         }
         syncStatusRefreshTask?.cancel()
@@ -775,14 +776,14 @@ struct MobileSettingsView: View {
                                 } label: {
                                     Label("Choose Folder", systemImage: "folder")
                                 }
-                                .buttonStyle(.bordered)
+                                .buttonStyle(AppButtonStyle())
 
                                 Button(role: .destructive) {
                                     store.clearSelectedLibraryFolder()
                                 } label: {
                                     Label("Forget", systemImage: "xmark.circle")
                                 }
-                                .buttonStyle(.bordered)
+                                .buttonStyle(AppButtonStyle())
                                 .disabled(store.libraryRoot == nil)
                             }
                             .padding(.top, 4)
@@ -838,7 +839,7 @@ struct MobileSettingsView: View {
             .padding(.vertical, 6)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(Color.secondary.opacity(0.12))
-            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .clipShape(RoundedRectangle(cornerRadius: AppControlMetrics.cornerRadius))
         }
     }
 

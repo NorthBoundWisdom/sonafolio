@@ -70,7 +70,7 @@ final class JobController: ObservableObject {
     @Published var processingReport: ProcessingReport?
     @Published var isRefreshingLibrary = false
     @Published var libraryRefreshMessage = ""
-    @Published var librarySyncStatus = LibrarySyncStatus.unavailable()
+    @Published var librarySyncStatus = LibrarySyncStatus.checking()
 
     let runner: any ProcessRunning
     let logStore = LogStore()

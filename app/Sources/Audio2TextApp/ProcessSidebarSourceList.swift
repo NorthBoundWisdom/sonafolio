@@ -6,7 +6,7 @@ import SwiftUI
 extension ProcessSidebarView {
     var sourceList: some View {
         ScrollView {
-            LazyVStack(alignment: .leading, spacing: SidebarMetrics.sectionSpacing) {
+            LazyVStack(alignment: .leading, spacing: AppControlMetrics.Sidebar.sectionSpacing) {
                 smartFeedsSection
                 librarySection
             }
@@ -17,7 +17,7 @@ extension ProcessSidebarView {
 
     var processList: some View {
         ScrollView {
-            LazyVStack(alignment: .leading, spacing: SidebarMetrics.sectionSpacing) {
+            LazyVStack(alignment: .leading, spacing: AppControlMetrics.Sidebar.sectionSpacing) {
                 smartFeedsSection
                 librarySection
                 if isShowingSubscriptions {
@@ -38,7 +38,7 @@ extension ProcessSidebarView {
     }
 
     var smartFeedsSection: some View {
-        VStack(alignment: .leading, spacing: SidebarMetrics.rowSpacing) {
+        VStack(alignment: .leading, spacing: AppControlMetrics.Sidebar.rowSpacing) {
             sourceRow(
                 title: "Subscriptions",
                 iconName: "dot.radiowaves.left.and.right",
@@ -93,18 +93,16 @@ extension ProcessSidebarView {
     }
 
     var librarySection: some View {
-        VStack(alignment: .leading, spacing: SidebarMetrics.rowSpacing) {
-            HStack(spacing: 8) {
+        VStack(alignment: .leading, spacing: AppControlMetrics.Sidebar.rowSpacing) {
+            HStack(spacing: AppControlMetrics.controlSpacing) {
                 sidebarHeader("Folders")
                 Spacer()
                 Button {
                     store.isNewGroupPanelPresented = true
                 } label: {
                     Image(systemName: "folder.badge.plus")
-                        .font(.system(size: 12, weight: .medium))
-                        .frame(width: 22, height: 20)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(AppButtonStyle(variant: .subtle, size: .compact, iconOnly: true))
                 .foregroundStyle(.secondary)
                 .help("New group")
                 .popover(isPresented: $store.isNewGroupPanelPresented, arrowEdge: .top) {
@@ -116,10 +114,8 @@ extension ProcessSidebarView {
                     store.showImportPanel()
                 } label: {
                     Image(systemName: "plus")
-                        .font(.system(size: 12, weight: .medium))
-                        .frame(width: 22, height: 20)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(AppButtonStyle(variant: .subtle, size: .compact, iconOnly: true))
                 .foregroundStyle(.secondary)
                 .help("New record")
                 .padding(.trailing, 6)
@@ -136,11 +132,11 @@ extension ProcessSidebarView {
             Text("New Group")
                 .font(.headline)
             TextField("Group name", text: $newGroupName)
-                .textFieldStyle(.roundedBorder)
+                .textFieldStyle(AppTextFieldStyle())
                 .onSubmit {
                     createNewGroup()
                 }
-            HStack(spacing: 8) {
+            HStack(spacing: AppControlMetrics.controlSpacing) {
                 Button("Cancel") {
                     store.isNewGroupPanelPresented = false
                     newGroupName = ""
@@ -149,7 +145,7 @@ extension ProcessSidebarView {
                 Button("Create") {
                     createNewGroup()
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(AppButtonStyle(variant: .prominent))
                 .disabled(newGroupName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
         }
@@ -184,7 +180,7 @@ extension ProcessSidebarView {
                 }
             )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(AppRowButtonStyle())
     }
 
     func groupSourceRow(_ section: ProcessLibrarySection) -> some View {
@@ -204,8 +200,8 @@ extension ProcessSidebarView {
                 titleContent: {
                     if renamingGroupID == section.id {
                         TextField("Group name", text: $renamingGroupName)
-                            .textFieldStyle(.plain)
-                            .font(.system(size: SidebarMetrics.titleFontSize, weight: .regular))
+                            .textFieldStyle(AppTextFieldStyle(inline: true))
+                            .font(.system(size: AppControlMetrics.Sidebar.titleFontSize, weight: .regular))
                             .onSubmit {
                                 commitGroupRename(section)
                             }
@@ -220,7 +216,7 @@ extension ProcessSidebarView {
                 }
             )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(AppRowButtonStyle())
         .contextMenu {
             Button {
                 beginGroupRename(section)
@@ -260,12 +256,12 @@ extension ProcessSidebarView {
                 }
             )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(AppRowButtonStyle())
     }
 
     func sidebarHeader(_ title: String) -> some View {
         Text(title)
-            .font(.system(size: SidebarMetrics.headerFontSize, weight: .semibold))
+            .font(.system(size: AppControlMetrics.Sidebar.headerFontSize, weight: .semibold))
             .foregroundStyle(.secondary)
             .padding(.top, 1)
             .padding(.bottom, 1)
@@ -282,32 +278,28 @@ extension ProcessSidebarView {
         @ViewBuilder titleContent: () -> TitleContent
     ) -> some View {
         let displayCountText = countText ?? (count > 0 ? "\(count)" : nil)
-        return HStack(spacing: 8) {
+        return HStack(spacing: AppControlMetrics.controlSpacing) {
             Image(systemName: iconName)
-                .font(.system(size: SidebarMetrics.sourceIconSize, weight: .regular))
+                .font(.system(size: AppControlMetrics.Sidebar.sourceIconSize, weight: .regular))
                 .foregroundStyle(isSelected ? Color.white : iconColor)
-                .frame(width: SidebarMetrics.sourceIconFrame, height: SidebarMetrics.sourceIconFrame)
+                .frame(width: AppControlMetrics.Sidebar.sourceIconFrame, height: AppControlMetrics.Sidebar.sourceIconFrame)
 
             titleContent()
-                .font(.system(size: SidebarMetrics.titleFontSize, weight: isSelected ? .semibold : .regular))
+                .font(.system(size: AppControlMetrics.Sidebar.titleFontSize, weight: isSelected ? .semibold : .regular))
                 .foregroundStyle(isSelected ? Color.white : Color.primary)
 
             Spacer(minLength: 8)
 
             if let displayCountText {
                 Text(displayCountText)
-                    .font(.system(size: SidebarMetrics.countFontSize, weight: .medium, design: .rounded).monospacedDigit())
+                    .font(.system(size: AppControlMetrics.Sidebar.countFontSize, weight: .medium, design: .rounded).monospacedDigit())
                     .foregroundStyle(isSelected ? Color.white : Color.secondary)
                     .lineLimit(1)
             }
         }
-        .frame(height: SidebarMetrics.sourceRowHeight)
-        .padding(.horizontal, SidebarMetrics.rowHorizontalPadding)
-        .background(
-            RoundedRectangle(cornerRadius: SidebarMetrics.rowCornerRadius)
-                .fill(isSelected ? Color.accentColor : Color.clear)
-        )
-        .contentShape(Rectangle())
+        .frame(height: AppControlMetrics.Sidebar.sourceRowHeight)
+        .padding(.horizontal, AppControlMetrics.Sidebar.rowHorizontalPadding)
+        .appRowSurface(isSelected: isSelected, isEmphasized: true)
         .accessibilityLabel(accessibilityLabel(title: title, countText: accessibilityCountText ?? displayCountText))
     }
 

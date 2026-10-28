@@ -1,0 +1,7 @@
+{
+  "GeoControls": {
+    "remote": "https://github.com/NorthBoundWisdom/GeoControls.git",
+    "commit": "68aed651618e3033fe3f995c5163d342b4322b57",
+    "path": "build/dependencies/GeoControls"
+  }
+}

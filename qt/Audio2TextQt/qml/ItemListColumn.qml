@@ -10,6 +10,22 @@ CustomPane {
         color: Theme.pageSurfaceColor
     }
 
+    function copyText(text) {
+        clipboardBuffer.text = text;
+        clipboardBuffer.selectAll();
+        clipboardBuffer.copy();
+        clipboardBuffer.text = "";
+    }
+
+    TextEdit {
+        id: clipboardBuffer
+        visible: false
+    }
+
+    AddSubscriptionDialog {
+        id: addSubscriptionDialog
+    }
+
     function isUnprocessedItem(item) {
         return item && !item.hasProcessed;
     }
@@ -74,7 +90,7 @@ CustomPane {
             RowLayout {
                 Layout.fillWidth: true
                 CustomLabel {
-                    text: libraryController.showingSubscriptions ? libraryController.subscriptions.length + " subscriptions" : libraryController.filteredItems.length + " " + libraryController.selectedSourceTitle
+                    text: libraryController.showingSubscriptions ? "Subscriptions" : libraryController.filteredItems.length + " " + libraryController.selectedSourceTitle
                     color: Theme.placeholderTextColor
                     elide: Text.ElideRight
                     Layout.fillWidth: true
@@ -86,10 +102,24 @@ CustomPane {
                     onClicked: libraryController.showArchived = checked
                 }
                 CustomButton {
+                    objectName: "refreshAllSubscriptions"
                     visible: libraryController.showingSubscriptions
-                    text: "Refresh"
+                    text: "↻"
+                    flat: true
+                    tooltipText: "Refresh all subscriptions"
+                    Accessible.name: tooltipText
                     enabled: libraryController.subscriptions.length > 0 && !jobController.running
-                    onClicked: jobController.refreshSubscriptions(true, "", 0)
+                    onClicked: jobController.refreshSubscriptions(true, "", 10)
+                }
+                CustomButton {
+                    objectName: "addSubscription"
+                    visible: libraryController.showingSubscriptions
+                    text: "+"
+                    flat: true
+                    tooltipText: "Add subscription"
+                    Accessible.name: tooltipText
+                    enabled: !jobController.running
+                    onClicked: addSubscriptionDialog.open()
                 }
             }
         }
@@ -279,8 +309,45 @@ CustomPane {
                 rightPadding: 18
                 topPadding: 8
                 bottomPadding: 8
+                objectName: "subscriptionRow_" + modelData.id
                 highlighted: libraryController.selectedSubscriptionId === modelData.id
                 onClicked: libraryController.selectSubscription(modelData.id)
+
+                TapHandler {
+                    acceptedButtons: Qt.RightButton
+                    onTapped: function(eventPoint) {
+                        subscriptionMenu.x = eventPoint.position.x;
+                        subscriptionMenu.y = eventPoint.position.y;
+                        subscriptionMenu.open();
+                    }
+                }
+
+                CustomMenu {
+                    id: subscriptionMenu
+                    padding: 8
+                    menuWidth: 240
+                    CustomMenuItem {
+                        text: "Refresh subscription"
+                        enabled: !jobController.running
+                        onTriggered: jobController.refreshSubscriptions(false, modelData.id, 10)
+                    }
+                    CustomMenuItem {
+                        text: "Fetch complete history"
+                        enabled: !jobController.running
+                        onTriggered: jobController.fetchSubscriptionHistory(modelData.id)
+                    }
+                    CustomMenuItem {
+                        text: "Copy link"
+                        enabled: (modelData.feedURL || modelData.url || "").length > 0
+                        onTriggered: root.copyText(modelData.feedURL || modelData.url)
+                    }
+                    CustomMenuSeparator {}
+                    CustomMenuItem {
+                        text: "Remove subscription"
+                        enabled: !jobController.running
+                        onTriggered: jobController.removeSubscription(modelData.id)
+                    }
+                }
 
                 background: Rectangle {
                     color: subscriptionRow.highlighted ? Theme.actionButtonHoveredColor : (subscriptionRow.hovered ? Theme.railSurfaceColor : "transparent")
@@ -291,12 +358,12 @@ CustomPane {
 
                     RowLayout {
                         Layout.fillWidth: true
-                        CustomLabel {
-                            text: modelData.source === "xiaoyuzhou" ? "XYZ" : "RSS"
-                            color: Theme.highlightColor
-                            font.pixelSize: 10
-                            font.weight: Font.DemiBold
-                            Layout.preferredWidth: 30
+                        SidebarIcon {
+                            symbol: "subscriptions"
+                            color: subscriptionRow.highlighted ? Theme.highlightColor
+                                : Theme.appearance === 1 ? "#da82f5" : "#a226cf"
+                            Layout.preferredWidth: 18
+                            Layout.preferredHeight: 18
                         }
                         CustomLabel {
                             text: modelData.title
@@ -307,7 +374,9 @@ CustomPane {
                             Layout.fillWidth: true
                         }
                         CustomLabel {
+                            visible: modelData.count > 0
                             text: modelData.unprocessedCount + "/" + modelData.count
+                            font.weight: Font.DemiBold
                             color: modelData.unprocessedCount > 0 ? Theme.highlightColor : Theme.placeholderTextColor
                             font.pixelSize: 12
                         }

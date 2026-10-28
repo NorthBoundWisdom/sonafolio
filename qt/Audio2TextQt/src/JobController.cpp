@@ -269,6 +269,18 @@ void JobController::refreshSubscriptions(bool refreshAll, const QString &subscri
     enqueueServiceJob("Refresh subscriptions", "subscriptions", params, true);
 }
 
+void JobController::fetchSubscriptionHistory(const QString &subscriptionId)
+{
+    if (subscriptionId.trimmed().isEmpty())
+    {
+        failBeforeStart("Select a subscription to fetch its history.");
+        return;
+    }
+    QVariantMap params;
+    params["arguments"] = QVariantList{"refresh", "--full-history", "--id", subscriptionId.trimmed()};
+    enqueueServiceJob("Fetch subscription history", "subscriptions", params, true);
+}
+
 void JobController::removeSubscription(const QString &subscriptionId)
 {
     if (subscriptionId.trimmed().isEmpty())

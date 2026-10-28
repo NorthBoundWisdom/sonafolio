@@ -8,8 +8,10 @@ import Audio2TextCore
 final class ApplicationStatusPanelTests: XCTestCase {
     @MainActor
     func testSyncTitlesRemainFullyReadableAtMinimumSidebarWidth() throws {
-        for state in [LibrarySyncStatus.State.synced, .syncing, .offline] {
-            let title = state == .synced ? "Synced" : state == .syncing ? "Syncing" : "Offline"
+        let titles: [(LibrarySyncStatus.State, String)] = [
+            (.checking, "Checking"), (.synced, "Synced"), (.syncing, "Syncing"), (.offline, "Offline"),
+        ]
+        for (state, title) in titles {
             let status = LibrarySyncStatus(state: state, title: title,
                                            detail: "All library documents are available for reading.")
             let host = NSHostingView(rootView: LibrarySyncStatusCard(status: status, refresh: {}).frame(width: 154).environment(\.colorScheme, .light).background(Color.white))

@@ -2,6 +2,7 @@ import Foundation
 
 public struct LibrarySyncStatus: Equatable {
     public enum State: Equatable {
+        case checking
         case syncing
         case offline
         case synced
@@ -34,6 +35,16 @@ public struct LibrarySyncStatus: Equatable {
         self.pendingFileCount = pendingFileCount
         self.errorFileCount = errorFileCount
         self.progress = progress
+    }
+
+    // Shown until the first probe finishes so launch never reports a failure
+    // that has not been observed yet.
+    public static func checking(_ detail: String = "Checking the library location.") -> LibrarySyncStatus {
+        LibrarySyncStatus(state: .checking, title: "Checking", detail: detail)
+    }
+
+    public static func notConfigured(_ detail: String = "Choose the library folder in Settings.") -> LibrarySyncStatus {
+        LibrarySyncStatus(state: .offline, title: "Not Set Up", detail: detail)
     }
 
     public static func unavailable(_ detail: String = "The synced library is unavailable. Check the network or iCloud Drive.") -> LibrarySyncStatus {

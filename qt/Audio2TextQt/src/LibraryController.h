@@ -68,6 +68,7 @@ public:
     Q_INVOKABLE void toggleSelectedStar();
     Q_INVOKABLE void setSelectedQueueStatus(const QString &status);
     Q_INVOKABLE void archiveSelected(bool archived);
+    Q_INVOKABLE void setItemsArchived(const QStringList &episodeIds, bool archived);
     Q_INVOKABLE QString documentForSelectedTab(const QString &tab) const;
 
 signals:

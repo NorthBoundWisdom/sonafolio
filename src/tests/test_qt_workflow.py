@@ -90,6 +90,7 @@ def test_qt_configure_selects_environment_toolchain(tmp_path, monkeypatch, expli
     toolchain.write_text("# Fixture\n")
     monkeypatch.setenv("VCPKG_ROOT", str(vcpkg))
     monkeypatch.delenv("CMAKE_TOOLCHAIN_FILE", raising=False)
+    monkeypatch.setenv("GEOCONTROLS_SOURCE_ROOT", str(tmp_path / "controls"))
     if explicit:
         toolchain = tmp_path / "custom.cmake"
         toolchain.write_text("# Explicit fixture\n")

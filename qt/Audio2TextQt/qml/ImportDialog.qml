@@ -27,7 +27,7 @@ CustomDialog {
         CustomTabBar {
             id: importTabs
             Layout.fillWidth: true
-            onTargetIndexChanged: root.selectedMode = ["xiaoyuzhou", "local", "subscription"][targetIndex]
+            onTargetIndexChanged: root.selectedMode = ["xiaoyuzhou", "local"][targetIndex]
             CustomTabButton {
                 text: "Xiaoyuzhou"
                 tabBar: importTabs
@@ -39,18 +39,12 @@ CustomDialog {
                 tabBar: importTabs
                 targetIndex: 1
             }
-            CustomTabButton {
-                objectName: "subscriptionImportTab"
-                text: "Subscription"
-                tabBar: importTabs
-                targetIndex: 2
-            }
         }
 
         StackLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            currentIndex: root.selectedMode === "xiaoyuzhou" ? 0 : root.selectedMode === "local" ? 1 : 2
+            currentIndex: root.selectedMode === "xiaoyuzhou" ? 0 : 1
 
             ColumnLayout {
                 spacing: 10
@@ -96,46 +90,10 @@ CustomDialog {
                     Layout.fillWidth: true
                 }
             }
-
-            ColumnLayout {
-                spacing: 10
-                CustomTextField {
-                    id: subscriptionUrl
-                    alignRightWhenFocused: false
-                    placeholderText: "RSS or podcast URL"
-                    Layout.fillWidth: true
-                }
-                CustomComboBox {
-                    id: subscriptionGroup
-                    editable: true
-                    model: libraryController.groups
-                    textRole: "title"
-                    Layout.fillWidth: true
-                }
-                CustomSpinBox {
-                    id: subscriptionLimit
-                    objectName: "importSubscriptionLimit"
-                    decimals: 0
-                    realFrom: 1
-                    realTo: 500
-                    realValue: 20
-                    Layout.preferredWidth: 140
-                }
-            }
         }
 
         RowLayout {
             Layout.fillWidth: true
-            CustomButton {
-                text: "List"
-                visible: root.selectedMode === "subscription"
-                onClicked: jobController.listSubscriptions()
-            }
-            CustomButton {
-                text: "Refresh All"
-                visible: root.selectedMode === "subscription"
-                onClicked: jobController.refreshSubscriptions(true, "", subscriptionLimit.value)
-            }
             Item {
                 Layout.fillWidth: true
             }
@@ -150,10 +108,8 @@ CustomDialog {
                 onClicked: {
                     if (root.selectedMode === "xiaoyuzhou") {
                         jobController.importXiaoyuzhou(episodeUrl.text, importGroup.editText || importGroup.currentText, downloadAudio.checked);
-                    } else if (root.selectedMode === "local") {
-                        jobController.transcribeAudio(localPath.text);
                     } else {
-                        jobController.addSubscription(subscriptionUrl.text, subscriptionGroup.editText || subscriptionGroup.currentText, subscriptionLimit.value);
+                        jobController.transcribeAudio(localPath.text);
                     }
                     root.close();
                 }

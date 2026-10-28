@@ -131,7 +131,7 @@ struct SettingsView: View {
                 )
                 rowDivider
                 labeledField("ASR Profile") {
-                    Picker("ASR Profile", selection: $draft.localASRProfile) {
+                    AppPicker("ASR Profile", selection: $draft.localASRProfile) {
                         ForEach(LocalASRProfile.all) { profile in
                             Text(profile.title).tag(profile.name)
                         }
@@ -151,13 +151,13 @@ struct SettingsView: View {
                                 draft.transcriptionLanguages.removeAll { $0 == language.id }
                                 if selected { draft.transcriptionLanguages.append(language.id) }
                             }
-                        )).toggleStyle(.checkbox)
+                        )).toggleStyle(AppToggleStyle())
                     }
                 }
                 Button("Automatic Detection") { draft.transcriptionLanguages = [] }
                 rowDivider
                 labeledField("Summary Output Language") {
-                    Picker("Summary Output Language", selection: $draft.summaryLanguage) {
+                    AppPicker("Summary Output Language", selection: $draft.summaryLanguage) {
                         ForEach(LanguageOption.all) { Text($0.title).tag($0.id) }
                     }.labelsHidden().frame(width: 220)
                 }
@@ -183,7 +183,7 @@ struct SettingsView: View {
                 rowDivider
                 labeledField("Model") {
                     EditableComboBox(text: $draft.cloudModel, options: draft.cloudModelOptions)
-                        .frame(width: 240, height: 28)
+                        .frame(width: 240, height: AppControlMetrics.height)
                 }
                 rowDivider
                 numericCloudFields
@@ -207,11 +207,11 @@ struct SettingsView: View {
                     .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
                 rowDivider
                 labeledField("Backend") {
-                    Picker("Translation Backend", selection: translationBackendBinding) {
+                    AppPicker("Translation Backend", selection: translationBackendBinding) {
                         Text("Cloud").tag(TranslationBackend.cloud)
                         Text("Local").tag(TranslationBackend.local)
                     }
-                    .pickerStyle(.segmented)
+                    .appSegmentedControl()
                     .labelsHidden()
                     .frame(width: 170)
                 }
@@ -243,12 +243,12 @@ struct SettingsView: View {
                     .frame(maxWidth: .infinity, minHeight: 40, alignment: .leading)
                 rowDivider
                 labeledField("Chunking") {
-                    Picker("Chunking", selection: $draft.workflowChunking) {
+                    AppPicker("Chunking", selection: $draft.workflowChunking) {
                         Text("Auto").tag("auto")
                         Text("Fixed").tag("fixed")
                         Text("Smart").tag("smart")
                     }
-                    .pickerStyle(.segmented)
+                    .appSegmentedControl()
                     .labelsHidden()
                     .frame(width: 230)
                 }
@@ -277,7 +277,7 @@ struct SettingsView: View {
         ) {
             settingsGroup {
                 labeledField("Text Size") {
-                    Picker("Text Size", selection: readingTextSizeBinding) {
+                    AppPicker("Text Size", selection: readingTextSizeBinding) {
                         ForEach(ReadingTextSize.allCases) { size in
                             Text(size.title).tag(size)
                         }
@@ -287,34 +287,34 @@ struct SettingsView: View {
                 }
                 rowDivider
                 labeledField("Line Spacing") {
-                    Picker("Line Spacing", selection: readingLineSpacingBinding) {
+                    AppPicker("Line Spacing", selection: readingLineSpacingBinding) {
                         ForEach(ReadingLineSpacing.allCases) { spacing in
                             Text(spacing.title).tag(spacing)
                         }
                     }
-                    .pickerStyle(.segmented)
+                    .appSegmentedControl()
                     .labelsHidden()
                     .frame(width: 300)
                 }
                 rowDivider
                 labeledField("Content Width") {
-                    Picker("Content Width", selection: readingContentWidthBinding) {
+                    AppPicker("Content Width", selection: readingContentWidthBinding) {
                         ForEach(ReadingContentWidth.allCases) { width in
                             Text(width.title).tag(width)
                         }
                     }
-                    .pickerStyle(.segmented)
+                    .appSegmentedControl()
                     .labelsHidden()
                     .frame(width: 360)
                 }
                 rowDivider
                 labeledField("Font") {
-                    Picker("Font", selection: readingFontDesignBinding) {
+                    AppPicker("Font", selection: readingFontDesignBinding) {
                         ForEach(ReadingFontDesign.allCases) { design in
                             Text(design.title).tag(design)
                         }
                     }
-                    .pickerStyle(.segmented)
+                    .appSegmentedControl()
                     .labelsHidden()
                     .frame(width: 260)
                 }
@@ -441,7 +441,7 @@ struct SettingsView: View {
         .padding(.vertical, 4)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.secondary.opacity(0.08))
-        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .clipShape(RoundedRectangle(cornerRadius: AppControlMetrics.cornerRadius))
     }
 
     private var modelDownloadsPresentedBinding: Binding<Bool> {
@@ -526,9 +526,9 @@ struct SettingsView: View {
             SimpleMarkdownView(text: readingPreviewMarkdown, style: draft.readingStyle)
                 .frame(height: 260)
                 .background(Color.secondary.opacity(0.06))
-                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .clipShape(RoundedRectangle(cornerRadius: AppControlMetrics.cornerRadius))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 8)
+                    RoundedRectangle(cornerRadius: AppControlMetrics.cornerRadius)
                         .stroke(Color.secondary.opacity(0.12), lineWidth: 1)
                 )
         }
@@ -634,7 +634,7 @@ struct SettingsView: View {
     }
 
     private var apiBaseControl: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: AppControlMetrics.controlSpacing) {
             TextField("", text: $draft.apiBase)
                 .labelsHidden()
                 .multilineTextAlignment(.trailing)
@@ -647,15 +647,14 @@ struct SettingsView: View {
     }
 
     private var apiKeyControl: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: AppControlMetrics.controlSpacing) {
             apiKeyPreviewField
             Button {
                 isAPIKeyVisible.toggle()
             } label: {
                 Image(systemName: isAPIKeyVisible ? "eye.slash" : "eye")
-                    .frame(width: 18, height: 18)
             }
-            .buttonStyle(.bordered)
+            .buttonStyle(AppButtonStyle(iconOnly: true))
             .help(isAPIKeyVisible ? "Hide API key" : "Show API key")
 
             pasteButton {
@@ -688,9 +687,8 @@ struct SettingsView: View {
     private func pasteButton(action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: "doc.on.clipboard")
-                .frame(width: 18, height: 18)
         }
-        .buttonStyle(.bordered)
+        .buttonStyle(AppButtonStyle(iconOnly: true))
         .help("Paste from Clipboard")
     }
 
@@ -707,10 +705,8 @@ struct SettingsView: View {
                 store.testCloudConnection(draft)
             } label: {
                 Image(systemName: "network")
-                    .frame(width: 18, height: 18)
             }
-            .buttonStyle(.borderedProminent)
-            .tint(.green)
+            .buttonStyle(AppButtonStyle(variant: .prominent, iconOnly: true, tint: .green))
             .disabled(store.isTestingCloud)
             .help("Check API key")
         } else if store.isCloudConnectionFailed(for: draft) {
@@ -718,10 +714,8 @@ struct SettingsView: View {
                 store.testCloudConnection(draft)
             } label: {
                 Image(systemName: "network")
-                    .frame(width: 18, height: 18)
             }
-            .buttonStyle(.borderedProminent)
-            .tint(.red)
+            .buttonStyle(AppButtonStyle(variant: .prominent, iconOnly: true, tint: .red))
             .disabled(store.isTestingCloud)
             .help("Check API key")
         } else {
@@ -729,8 +723,8 @@ struct SettingsView: View {
                 store.testCloudConnection(draft)
             } label: {
                 Image(systemName: "network")
-                    .frame(width: 18, height: 18)
             }
+            .buttonStyle(AppButtonStyle(iconOnly: true))
             .disabled(store.isTestingCloud)
             .help("Check API key")
         }
@@ -807,7 +801,7 @@ struct SettingsView: View {
                 .fontWeight(.medium)
                 .frame(width: 210, alignment: .leading)
             Spacer()
-            Picker("ASR Model", selection: selection) {
+            AppPicker("ASR Model", selection: selection) {
                 ForEach(LocalASRModel.all) { model in
                     Text(model.title).tag(model.alias)
                 }
@@ -845,7 +839,7 @@ struct SettingsView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
             TextField("", text: text)
-                .textFieldStyle(.roundedBorder)
+                .textFieldStyle(AppTextFieldStyle())
         }
     }
 
@@ -853,12 +847,8 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: 6) {
             Text(title)
                 .foregroundStyle(.secondary)
-            TextEditor(text: text)
-                .font(.body)
+            AppTextEditor(text: text)
                 .frame(minHeight: 74)
-                .scrollContentBackground(.hidden)
-                .background(Color(nsColor: .textBackgroundColor).opacity(0.65))
-                .clipShape(RoundedRectangle(cornerRadius: 6))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.vertical, 8)
@@ -962,11 +952,9 @@ private struct SettingsSidebar: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.horizontal, 10)
                             .padding(.vertical, 7)
-                            .background(selection == tab ? Color.accentColor.opacity(0.16) : Color.clear)
-                            .clipShape(RoundedRectangle(cornerRadius: 6))
-                            .contentShape(Rectangle())
+                            .appRowSurface(isSelected: selection == tab)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(AppRowButtonStyle())
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .contentShape(Rectangle())
                     .foregroundStyle(selection == tab ? .primary : .secondary)
@@ -1035,7 +1023,7 @@ private struct SettingsOverviewPane: View {
                     .padding(12)
                     .frame(minHeight: 94, alignment: .topLeading)
                     .background(Color.secondary.opacity(0.08))
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .clipShape(RoundedRectangle(cornerRadius: AppControlMetrics.cornerRadius))
                 }
             }
         }
@@ -1081,7 +1069,7 @@ private struct ConfigSourcesPane: View {
             }
             .padding(12)
             .background(Color.secondary.opacity(0.08))
-            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .clipShape(RoundedRectangle(cornerRadius: AppControlMetrics.cornerRadius))
 
             VStack(spacing: 0) {
                 HStack {
@@ -1129,7 +1117,7 @@ private struct ConfigSourcesPane: View {
                 }
             }
             .background(Color.secondary.opacity(0.06))
-            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .clipShape(RoundedRectangle(cornerRadius: AppControlMetrics.cornerRadius))
         }
     }
 
@@ -1149,7 +1137,7 @@ private struct ConfigSourcesPane: View {
             .padding(.vertical, 3)
             .background(color.opacity(0.14))
             .foregroundStyle(color)
-            .clipShape(RoundedRectangle(cornerRadius: 6))
+            .clipShape(RoundedRectangle(cornerRadius: AppControlMetrics.cornerRadius))
     }
 }
 
@@ -1170,7 +1158,7 @@ private struct SettingsFooterBar: View {
                 Button(action: save) {
                     Label("Save", systemImage: "checkmark.seal")
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(AppButtonStyle(variant: .prominent))
             }
             if !message.isEmpty {
                 Text(message)
@@ -1181,92 +1169,6 @@ private struct SettingsFooterBar: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
-    }
-}
-
-struct EditableComboBox: NSViewRepresentable {
-    @Binding var text: String
-    let options: [String]
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator(text: $text)
-    }
-
-    func makeNSView(context: Context) -> NSComboBox {
-        let comboBox = NSComboBox()
-        comboBox.usesDataSource = false
-        comboBox.isEditable = true
-        comboBox.completes = false
-        comboBox.delegate = context.coordinator
-        comboBox.target = context.coordinator
-        comboBox.action = #selector(Coordinator.comboBoxAction(_:))
-        comboBox.addItems(withObjectValues: options)
-        comboBox.stringValue = text
-        return comboBox
-    }
-
-    func updateNSView(_ nsView: NSComboBox, context _: Context) {
-        let currentItems = nsView.objectValues.compactMap { $0 as? String }
-        if currentItems != options {
-            nsView.removeAllItems()
-            nsView.addItems(withObjectValues: options)
-        }
-        if nsView.stringValue != text {
-            nsView.stringValue = text
-        }
-    }
-
-    final class Coordinator: NSObject, NSComboBoxDelegate, NSControlTextEditingDelegate {
-        @Binding private var text: String
-
-        init(text: Binding<String>) {
-            _text = text
-        }
-
-        @objc func comboBoxAction(_ sender: NSComboBox) {
-            commit(sender, preferSelection: true)
-        }
-
-        func controlTextDidChange(_ notification: Notification) {
-            guard let comboBox = notification.object as? NSComboBox else { return }
-            commit(comboBox, preferSelection: false)
-        }
-
-        func controlTextDidEndEditing(_ notification: Notification) {
-            guard let comboBox = notification.object as? NSComboBox else { return }
-            commit(comboBox, preferSelection: false)
-        }
-
-        func comboBoxSelectionIsChanging(_ notification: Notification) {
-            guard let comboBox = notification.object as? NSComboBox else { return }
-            commit(comboBox, preferSelection: true)
-        }
-
-        func comboBoxSelectionDidChange(_ notification: Notification) {
-            guard let comboBox = notification.object as? NSComboBox else { return }
-            commit(comboBox, preferSelection: true)
-        }
-
-        func comboBoxWillDismiss(_ notification: Notification) {
-            guard let comboBox = notification.object as? NSComboBox else { return }
-            commit(comboBox, preferSelection: true)
-        }
-
-        private func commit(_ comboBox: NSComboBox, preferSelection: Bool) {
-            if preferSelection, let selectedText = Self.selectedText(from: comboBox) {
-                text = selectedText
-                return
-            }
-            text = comboBox.stringValue
-        }
-
-        static func selectedText(from comboBox: NSComboBox) -> String? {
-            guard let selected = comboBox.objectValueOfSelectedItem as? String else {
-                return nil
-            }
-            let trimmed = selected.trimmingCharacters(in: .whitespacesAndNewlines)
-            return trimmed.isEmpty ? nil : selected
-        }
     }
 }
 
@@ -1313,7 +1215,7 @@ struct ModelDownloadsView: View {
                     .padding(8)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(Color.secondary.opacity(0.12))
-                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                    .clipShape(RoundedRectangle(cornerRadius: AppControlMetrics.cornerRadius))
                 HStack {
                     Button {
                         try? FileManager.default.createDirectory(at: modelRoot, withIntermediateDirectories: true)
@@ -1339,7 +1241,7 @@ struct ModelDownloadsView: View {
                             .fontWeight(.semibold)
                         Spacer()
                         if let url = URL(string: file.url) {
-                            Link("Download", destination: url)
+                            AppLink("Download", destination: url)
                         }
                     }
                     Text(modelRoot.appendingPathComponent(file.pathUnderModelRoot).path)
@@ -1349,7 +1251,7 @@ struct ModelDownloadsView: View {
                 }
                 .padding(10)
                 .background(Color.secondary.opacity(0.10))
-                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .clipShape(RoundedRectangle(cornerRadius: AppControlMetrics.cornerRadius))
             }
 
             Spacer(minLength: 0)
@@ -1365,7 +1267,7 @@ struct AudioToolsSetupView: View {
 
     var body: some View {
         HStack(spacing: 16) {
-            Link("Homebrew Formula", destination: URL(string: "https://formulae.brew.sh/formula/ffmpeg")!)
+            AppLink("Homebrew Formula", destination: URL(string: "https://formulae.brew.sh/formula/ffmpeg")!)
 
             Button {
                 store.reload()
@@ -1373,7 +1275,7 @@ struct AudioToolsSetupView: View {
             } label: {
                 Label("Refresh", systemImage: "arrow.clockwise")
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(AppButtonStyle(variant: .prominent))
         }
         .padding(20)
         .frame(width: 360, height: 96)

@@ -63,7 +63,7 @@ struct ProcessingReportDialog: View {
                     .textSelection(.enabled)
             }
             Spacer()
-            HStack(spacing: 8) {
+            HStack(spacing: AppControlMetrics.controlSpacing) {
                 resultBadge(title: "Succeeded", count: report.successCount, color: .green)
                 resultBadge(title: "Failed", count: report.failureCount, color: .red)
                 Button {
@@ -71,20 +71,16 @@ struct ProcessingReportDialog: View {
                     NSPasteboard.general.setString(clipboardText, forType: .string)
                 } label: {
                     Image(systemName: "doc.on.doc")
-                        .font(.system(size: 12, weight: .semibold))
-                        .frame(width: 24, height: 22)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(AppButtonStyle(variant: .subtle, size: .compact, iconOnly: true))
                 .foregroundStyle(.secondary)
                 .help(report.hasFailures ? "Copy failure details" : "Copy processing results")
                 Button {
                     dismiss()
                 } label: {
                     Image(systemName: "xmark")
-                        .font(.system(size: 12, weight: .bold))
-                        .frame(width: 24, height: 22)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(AppButtonStyle(variant: .subtle, size: .compact, iconOnly: true))
                 .foregroundStyle(.secondary)
                 .keyboardShortcut(.cancelAction)
                 .help("Close")

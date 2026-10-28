@@ -8,15 +8,18 @@
 - Preserve optional FreeCM Config/Build/Run/Test/Package commands in
   `configs/freecm.commands.jsonc`. `configs/source_root_workflow.py` is only the
   plugin's setup/cleanup adapter; it does not manage dependency locks or modes.
-- GeoControls must be prepared locally and selected with `GEOCONTROLS_SOURCE_ROOT`.
-  CMake only consumes that checkout; missing dependencies fail without downloading.
-  Do not add automatic dependency acquisition to configure/build commands.
+- GeoControls is pinned by remote and commit in `configs/dependencies.json`. Qt Config
+  (`configs/qt_workflow.py config`) fetches that commit into ignored
+  `build/dependencies/GeoControls` and refuses to replace a modified checkout; Build consumes
+  the configured source. A `GEOCONTROLS_SOURCE_ROOT` or `--geocontrols-source` pointing
+  elsewhere is used as-is. CMake itself never downloads. Keep the release workflow's
+  GeoControls checkout ref equal to the pin.
 - Application version defaults use `configs/app_build.json`. Root `build.local.json`
   is ignored and holds machine-local environment variables and PATH entries, including
   SDK/dependency paths and signing/version overrides. All build entrypoints load it
   through `configs/build_environment.py`. The public `configs/build.local.example.json`
   is copied only when the local file is missing during setup or Qt Config; never overwrite
-  existing local settings. Do not recreate source-root dependency locks or modes.
+  existing local settings. Do not recreate FreeCM source-root locks or dependency modes.
 - Validate plugin commands with `python3 configs/validate_repo_commands.py .`.
 
 This repository is public. Keep documentation, defaults, tests, and skills free of private absolute
@@ -72,6 +75,10 @@ the module form still uses the pytest installed for the selected Python interpre
 
 ## Code Rules
 
+- SwiftUI control geometry, colors, interaction styles, and reusable primitives live in
+  `app/Sources/Audio2TextApp/AppControls.swift`, which is shared with iOS. Panels use the
+  shared controls and semantic size/variant options instead of defining local control styles.
+  Keep touch targets and desktop sizes in that shared layer. Qt controls use GeoControls.
 - Do not develop on branches other than `main` unless the developer explicitly confirms
   branch-based work for the task. Without that confirmation, keep all development, commits, and
   pushes on `main`.

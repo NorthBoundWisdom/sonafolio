@@ -11,9 +11,6 @@ struct SubscriptionDetailViewState: Equatable {
     let subscriptionCount: Int
     let isAddingSubscription: Bool
     let isRefreshingSubscriptions: Bool
-    let subscriptionURLText: String
-    let subscriptionGroupName: String
-    let availableGroupNames: [String]
     let isProcessing: Bool
     let isCloudSummaryConfigured: Bool
 
@@ -24,11 +21,12 @@ struct SubscriptionDetailViewState: Equatable {
             && lhs.subscriptionCount == rhs.subscriptionCount
             && lhs.isAddingSubscription == rhs.isAddingSubscription
             && lhs.isRefreshingSubscriptions == rhs.isRefreshingSubscriptions
-            && lhs.subscriptionURLText == rhs.subscriptionURLText
-            && lhs.subscriptionGroupName == rhs.subscriptionGroupName
-            && lhs.availableGroupNames == rhs.availableGroupNames
             && lhs.isProcessing == rhs.isProcessing
             && lhs.isCloudSummaryConfigured == rhs.isCloudSummaryConfigured
+    }
+
+    var isSubscriptionBusy: Bool {
+        isRefreshingSubscriptions || isAddingSubscription || isProcessing
     }
 }
 
@@ -38,8 +36,11 @@ struct SubscriptionDetailView: View, Equatable {
     @State private var presentedEpisode: ProcessLibraryItem?
     @State private var selectedEpisodeIDs: Set<String> = []
     @State private var pendingDeleteItems: [ProcessLibraryItem] = []
-    @State private var showsOnlyUnprocessed = false
+    @State private var pendingRemoval: PodcastSubscriptionItem?
+    @State private var showsSubscriptionInfo = false
+    @State private var episodeStatusFilter: SubscriptionEpisodeStatusFilter = .all
     @State private var episodeTimeFilter: SubscriptionEpisodeTimeFilter = .all
+    @State private var episodeSortOrder: SubscriptionEpisodeSortOrder = .newestFirst
 
     static func == (lhs: SubscriptionDetailView, rhs: SubscriptionDetailView) -> Bool {
         lhs.state == rhs.state
@@ -49,35 +50,46 @@ struct SubscriptionDetailView: View, Equatable {
         VStack(alignment: .leading, spacing: 0) {
             header(snapshot: state.snapshot)
             Divider()
-            SubscriptionStaticDetailContent(
-                snapshot: state.snapshot,
-                snapshotVersion: state.snapshotVersion,
-                hasSubscriptions: state.hasSubscriptions,
-                selectedEpisodeIDs: selectedEpisodeIDs,
-                episodeFilterState: episodeFilterState,
-                filteredEpisodes: filteredEpisodes,
-                bulkActionState: bulkActionState,
-                open: openSubscriptionEpisode,
-                toggleSelection: toggleEpisodeSelection,
-                toggleAllVisibleSelection: toggleAllVisibleEpisodeSelection,
-                selectFrontVisibleSelection: selectFrontVisibleEpisodeSelection,
-                clearSelection: clearEpisodeSelection,
-                setShowsOnlyUnprocessed: setShowsOnlyUnprocessed,
-                setTimeFilter: setTimeFilter,
-                processSelection: processSelectedEpisodes,
-                archiveSelection: archiveSelectedEpisodes,
-                deleteSelection: requestDeleteSelectedEpisodes
-            )
-            .equatable()
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            Divider()
-            addRow
-                .padding(22)
+            if let snapshot = state.snapshot {
+                if snapshot.episodes.isEmpty {
+                    SubscriptionPlaceholder(
+                        systemImage: "tray",
+                        title: "No episodes yet",
+                        message: "Refresh the subscription to import its latest episodes."
+                    )
+                } else {
+                    episodeToolbar(counts: snapshot.counts)
+                    Divider()
+                    SubscriptionEpisodeList(
+                        snapshotVersion: state.snapshotVersion,
+                        episodes: filteredEpisodes,
+                        selectedEpisodeIDs: selectedEpisodeIDs,
+                        open: presentEpisode,
+                        openInLibrary: openInLibrary,
+                        toggleSelection: toggleEpisodeSelection
+                    )
+                    .equatable()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+            } else if state.hasSubscriptions {
+                SubscriptionPlaceholder(
+                    systemImage: "dot.radiowaves.left.and.right",
+                    title: "Select a subscription",
+                    message: "Choose a subscription in the sidebar to browse its episodes."
+                )
+            } else {
+                SubscriptionPlaceholder(
+                    systemImage: "dot.radiowaves.left.and.right",
+                    title: "No subscriptions",
+                    message: "Add a podcast or RSS feed to create metadata-only episode records."
+                )
+            }
         }
         .sheet(item: $presentedEpisode) { item in
             SubscriptionEpisodeInfoSheet(
                 item: item,
-                details: ProcessLibrary.channelEpisodeDetails(for: item)
+                details: ProcessLibrary.channelEpisodeDetails(for: item),
+                openInLibrary: item.isProcessed ? { openInLibrary(item) } : nil
             )
         }
         .alert("Delete selected items?", isPresented: deleteConfirmationBinding) {
@@ -99,7 +111,7 @@ struct SubscriptionDetailView: View, Equatable {
         .onChange(of: state.snapshotVersion) { _ in
             reconcileEpisodeSelection()
         }
-        .onChange(of: showsOnlyUnprocessed) { _ in
+        .onChange(of: episodeStatusFilter) { _ in
             reconcileEpisodeSelection()
         }
         .onChange(of: episodeTimeFilter) { _ in
@@ -107,8 +119,10 @@ struct SubscriptionDetailView: View, Equatable {
         }
     }
 
+    // MARK: Header
+
     private func header(snapshot: SubscriptionDetailSnapshot?) -> some View {
-        HStack(spacing: 10) {
+        HStack(alignment: .center, spacing: AppControlMetrics.controlSpacing) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(snapshot?.subscription.title ?? "Subscriptions")
                     .font(.title3.weight(.semibold))
@@ -118,100 +132,183 @@ struct SubscriptionDetailView: View, Equatable {
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
-            Spacer()
+            Spacer(minLength: AppControlMetrics.controlSpacing)
             if let subscription = snapshot?.subscription {
-                subscriptionActionButton(tooltip: "Copy subscription link") {
-                    copySubscriptionURLToPasteboard(subscription)
-                } label: {
-                    Image(systemName: "link")
-                }
-                subscriptionActionButton(
-                    tooltip: "Refresh subscription",
-                    disabled: state.isRefreshingSubscriptions || state.isAddingSubscription
-                ) {
+                Button {
                     controller.refreshSubscription(subscription)
                 } label: {
                     if state.isRefreshingSubscriptions {
-                        ProgressView()
-                            .controlSize(.small)
+                        Label {
+                            Text("Refreshing")
+                        } icon: {
+                            AppProgressSpinner()
+                        }
                     } else {
-                        Image(systemName: "arrow.clockwise")
+                        Label("Refresh", systemImage: "arrow.clockwise")
                     }
                 }
-                subscriptionActionButton(
-                    tooltip: "Fetch complete history",
-                    disabled: state.isRefreshingSubscriptions || state.isAddingSubscription
-                ) {
-                    controller.fetchSubscriptionHistory(subscription)
-                } label: {
-                    Image(systemName: "clock.arrow.circlepath")
-                }
-                subscriptionActionButton(
-                    tooltip: "Remove subscription",
-                    role: .destructive,
-                    disabled: state.isRefreshingSubscriptions || state.isAddingSubscription
-                ) {
-                    controller.removeSubscription(subscription)
-                } label: {
-                    Image(systemName: "trash")
-                }
+                .buttonStyle(AppButtonStyle())
+                .disabled(state.isSubscriptionBusy)
+                .appFastTooltip("Check the feed for new episodes")
+
+                subscriptionMenu(subscription)
             }
         }
         .padding(.horizontal, 22)
         .padding(.vertical, 14)
+        .sheet(isPresented: $showsSubscriptionInfo) {
+            if let subscription = snapshot?.subscription {
+                SubscriptionInfoSheet(subscription: subscription, counts: snapshot?.counts)
+            }
+        }
+        .alert("Remove subscription?", isPresented: removalConfirmationBinding) {
+            Button("Cancel", role: .cancel) {
+                pendingRemoval = nil
+            }
+            Button("Remove", role: .destructive) {
+                if let subscription = pendingRemoval {
+                    controller.removeSubscription(subscription)
+                }
+                pendingRemoval = nil
+            }
+        } message: {
+            Text("\"\(pendingRemoval?.title ?? "")\" will stop updating. Processed transcripts stay in the library.")
+        }
     }
 
-    private func subscriptionActionButton<Label: View>(
-        tooltip: String,
-        role: ButtonRole? = nil,
-        disabled: Bool = false,
-        action: @escaping () -> Void,
-        @ViewBuilder label: () -> Label
-    ) -> some View {
-        Button(role: role, action: action) {
-            label()
-                .frame(width: 24, height: 22)
+    private func subscriptionMenu(_ subscription: PodcastSubscriptionItem) -> some View {
+        AppMenu(iconOnly: true) {
+            Button {
+                showsSubscriptionInfo = true
+            } label: {
+                Label("Subscription Info", systemImage: "info.circle")
+            }
+            Button {
+                copySubscriptionURLToPasteboard(subscription)
+            } label: {
+                Label("Copy Feed Link", systemImage: "link")
+            }
+            .disabled(SubscriptionFeedURL.display(for: subscription) == nil)
+            Divider()
+            Button {
+                controller.fetchSubscriptionHistory(subscription)
+            } label: {
+                Label("Fetch Complete History", systemImage: "clock.arrow.circlepath")
+            }
+            .disabled(state.isSubscriptionBusy)
+            Divider()
+            Button(role: .destructive) {
+                pendingRemoval = subscription
+            } label: {
+                Label("Remove Subscription…", systemImage: "trash")
+            }
+            .disabled(state.isSubscriptionBusy)
+        } label: {
+            Image(systemName: "ellipsis")
         }
-        .buttonStyle(SubscriptionHeaderActionButtonStyle(role: role))
-        .disabled(disabled)
-        .subscriptionFastTooltip(tooltip)
-        .accessibilityLabel(tooltip)
+        .appFastTooltip("More actions")
+        .accessibilityLabel("More subscription actions")
     }
 
     private func headerSubtitle(snapshot: SubscriptionDetailSnapshot?) -> String {
         guard let snapshot else {
             return state.hasSubscriptions ? "\(state.subscriptionCount) subscriptions" : "No subscriptions yet"
         }
-        let counts = snapshot.counts
-        return "\(counts.total) episodes · \(counts.unprocessed) unprocessed"
+        var parts = ["\(snapshot.counts.total) episodes", "\(snapshot.counts.processed) processed"]
+        if let checkedAt = LibraryDateParser.date(from: snapshot.subscription.lastCheckedAt) {
+            parts.append("Checked \(checkedAt.formatted(.relative(presentation: .named)))")
+        }
+        return parts.joined(separator: " · ")
     }
 
-    private func openSubscriptionEpisode(_ item: ProcessLibraryItem) {
-        if item.isProcessed {
-            controller.openProcessedSubscriptionItem(item)
-        } else {
-            presentedEpisode = item
+    // MARK: Episode toolbar
+
+    // The filter and selection toolbars share one slot with a fixed height, so
+    // selecting an episode never pushes the list content down.
+    private func episodeToolbar(counts: SubscriptionDetailCounts) -> some View {
+        HStack(spacing: AppControlMetrics.controlSpacing) {
+            selectionMenu
+            if bulkActionState.hasSelection {
+                SubscriptionBulkActionBar(
+                    actionState: bulkActionState,
+                    clearSelection: clearEpisodeSelection,
+                    processSelection: processSelectedEpisodes,
+                    archiveSelection: archiveSelectedEpisodes,
+                    deleteSelection: requestDeleteSelectedEpisodes
+                )
+            } else {
+                SubscriptionEpisodeFilterBar(
+                    counts: counts,
+                    statusFilter: $episodeStatusFilter,
+                    timeFilter: $episodeTimeFilter,
+                    sortOrder: $episodeSortOrder
+                )
+            }
         }
+        .padding(.horizontal, 22)
+        .frame(maxWidth: .infinity, minHeight: AppControlMetrics.toolbarHeight + AppControlMetrics.controlSpacing)
+    }
+
+    private var selectionMenu: some View {
+        AppMenu(iconOnly: true) {
+            Button {
+                selectedEpisodeIDs = Set(filteredEpisodes.map(\.id))
+            } label: {
+                Label("Select All (\(filteredEpisodes.count))", systemImage: "checkmark.circle")
+            }
+            .disabled(filteredEpisodes.isEmpty || isAllVisibleSelected)
+            Button {
+                selectFrontVisibleEpisodeSelection(10)
+            } label: {
+                Label("Select First 10", systemImage: "list.number")
+            }
+            .disabled(filteredEpisodes.isEmpty)
+            Divider()
+            Button {
+                clearEpisodeSelection()
+            } label: {
+                Label("Deselect All", systemImage: "xmark.circle")
+            }
+            .disabled(selectedEpisodeIDs.isEmpty)
+        } label: {
+            Image(systemName: selectionSymbol)
+                .foregroundStyle(selectedEpisodeIDs.isEmpty ? Color.secondary : Color.accentColor)
+        }
+        .appFastTooltip("Select episodes")
+        .accessibilityLabel("Select episodes")
+        .accessibilityValue("\(bulkActionState.selectedCount) selected")
+    }
+
+    private var isAllVisibleSelected: Bool {
+        !filteredEpisodes.isEmpty && bulkActionState.selectedCount == filteredEpisodes.count
+    }
+
+    private var selectionSymbol: String {
+        if selectedEpisodeIDs.isEmpty { return "circle" }
+        return isAllVisibleSelected ? "checkmark.circle.fill" : "minus.circle.fill"
+    }
+
+    // MARK: Episode state
+
+    private func presentEpisode(_ item: ProcessLibraryItem) {
+        presentedEpisode = item
+    }
+
+    private func openInLibrary(_ item: ProcessLibraryItem) {
+        presentedEpisode = nil
+        controller.openProcessedSubscriptionItem(item)
     }
 
     private var currentEpisodes: [SubscriptionEpisodeDisplayItem] {
         state.snapshot?.episodes ?? []
     }
 
-    private var episodeFilterState: SubscriptionEpisodeFilterState {
-        SubscriptionEpisodeFilterState(
-            showsOnlyUnprocessed: showsOnlyUnprocessed,
-            timeFilter: episodeTimeFilter,
-            filteredCount: filteredEpisodes.count,
-            totalCount: currentEpisodes.count
-        )
-    }
-
     private var filteredEpisodes: [SubscriptionEpisodeDisplayItem] {
         SubscriptionEpisodeFilters.filteredEpisodes(
             currentEpisodes,
-            showsOnlyUnprocessed: showsOnlyUnprocessed,
-            timeFilter: episodeTimeFilter
+            statusFilter: episodeStatusFilter,
+            timeFilter: episodeTimeFilter,
+            sortOrder: episodeSortOrder
         )
     }
 
@@ -226,7 +323,6 @@ struct SubscriptionDetailView: View, Equatable {
         let items = selectedItems
         return SubscriptionBulkActionState(
             selectedCount: items.count,
-            unprocessedCount: SubscriptionBulkSelection.unprocessedItems(from: items).count,
             transcribeAndSummarizeCount: processableSelectedItems(workflow: .transcribeAndSummarize).count,
             localOnlyCount: processableSelectedItems(workflow: .localOnly).count,
             isProcessing: state.isProcessing,
@@ -248,13 +344,6 @@ struct SubscriptionDetailView: View, Equatable {
         }
     }
 
-    private func toggleAllVisibleEpisodeSelection() {
-        selectedEpisodeIDs = SubscriptionBulkSelection.toggledVisibleSelection(
-            selectedEpisodeIDs,
-            episodes: filteredEpisodes
-        )
-    }
-
     private func selectFrontVisibleEpisodeSelection(_ limit: Int) {
         selectedEpisodeIDs = SubscriptionBulkSelection.frontVisibleSelection(
             episodes: filteredEpisodes,
@@ -271,14 +360,6 @@ struct SubscriptionDetailView: View, Equatable {
             selectedEpisodeIDs,
             episodes: filteredEpisodes
         )
-    }
-
-    private func setShowsOnlyUnprocessed(_ value: Bool) {
-        showsOnlyUnprocessed = value
-    }
-
-    private func setTimeFilter(_ value: SubscriptionEpisodeTimeFilter) {
-        episodeTimeFilter = value
     }
 
     private func processSelectedEpisodes(workflow: ProcessingWorkflow) {
@@ -308,281 +389,91 @@ struct SubscriptionDetailView: View, Equatable {
         )
     }
 
-    private var addRow: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Add Subscription")
-                .font(.headline)
-            HStack(spacing: 8) {
-                TextField("Xiaoyuzhou, Apple Podcast, or RSS URL", text: subscriptionURLBinding)
-                    .textFieldStyle(.roundedBorder)
-                groupMenu
-                Button {
-                    controller.addSubscription()
-                } label: {
-                    if state.isAddingSubscription {
-                        ProgressView()
-                            .controlSize(.small)
-                    } else {
-                        Label("Add", systemImage: "plus")
-                    }
-                }
-                .buttonStyle(SubscriptionControlButtonStyle(variant: .prominent))
-                .disabled(
-                    state.subscriptionURLText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                        || state.isAddingSubscription
-                        || state.isRefreshingSubscriptions
-                )
-            }
-        }
-    }
-
-    private var groupMenu: some View {
-        Menu {
-            ForEach(state.availableGroupNames, id: \.self) { groupName in
-                Button(groupName) {
-                    controller.subscriptionGroupName = groupName
-                }
-            }
-        } label: {
-            SubscriptionMenuLabel(title: state.subscriptionGroupName, systemImage: "folder")
-        }
-        .fixedSize(horizontal: true, vertical: false)
-        .menuStyle(.button)
-        .menuIndicator(.hidden)
-        .buttonStyle(SubscriptionControlButtonStyle())
-    }
-
-    private var subscriptionURLBinding: Binding<String> {
+    private var removalConfirmationBinding: Binding<Bool> {
         Binding(
-            get: { state.subscriptionURLText },
-            set: { controller.subscriptionURLText = $0 }
+            get: { pendingRemoval != nil },
+            set: { if !$0 { pendingRemoval = nil } }
         )
     }
 
-    private func subscriptionDisplayURL(_ subscription: PodcastSubscriptionItem) -> String {
-        let feedURL = subscription.feedURL.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !feedURL.isEmpty { return feedURL }
-        let url = subscription.url.trimmingCharacters(in: .whitespacesAndNewlines)
-        return url.isEmpty ? "No URL" : url
-    }
-
     private func copySubscriptionURLToPasteboard(_ subscription: PodcastSubscriptionItem) {
-        let url = subscriptionDisplayURL(subscription)
-        guard url != "No URL" else { return }
+        guard let url = SubscriptionFeedURL.display(for: subscription) else { return }
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(url, forType: .string)
     }
 }
 
-private struct SubscriptionStaticDetailContent: View, Equatable {
-    let snapshot: SubscriptionDetailSnapshot?
-    let snapshotVersion: Int
-    let hasSubscriptions: Bool
-    let selectedEpisodeIDs: Set<String>
-    let episodeFilterState: SubscriptionEpisodeFilterState
-    let filteredEpisodes: [SubscriptionEpisodeDisplayItem]
-    let bulkActionState: SubscriptionBulkActionState
-    let open: (ProcessLibraryItem) -> Void
-    let toggleSelection: (ProcessLibraryItem) -> Void
-    let toggleAllVisibleSelection: () -> Void
-    let selectFrontVisibleSelection: (Int) -> Void
-    let clearSelection: () -> Void
-    let setShowsOnlyUnprocessed: (Bool) -> Void
-    let setTimeFilter: (SubscriptionEpisodeTimeFilter) -> Void
-    let processSelection: (ProcessingWorkflow) -> Void
-    let archiveSelection: () -> Void
-    let deleteSelection: () -> Void
+private enum SubscriptionFeedURL {
+    static func display(for subscription: PodcastSubscriptionItem) -> String? {
+        let feedURL = subscription.feedURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !feedURL.isEmpty { return feedURL }
+        let url = subscription.url.trimmingCharacters(in: .whitespacesAndNewlines)
+        return url.isEmpty ? nil : url
+    }
+}
 
-    static func == (lhs: SubscriptionStaticDetailContent, rhs: SubscriptionStaticDetailContent) -> Bool {
+private struct SubscriptionPlaceholder: View {
+    let systemImage: String
+    let title: String
+    let message: String
+
+    var body: some View {
+        VStack(spacing: 8) {
+            Image(systemName: systemImage)
+                .font(.system(size: 28, weight: .regular))
+                .foregroundStyle(.secondary)
+            Text(title)
+                .font(.title3.weight(.semibold))
+            Text(message)
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .padding(22)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+private struct SubscriptionEpisodeList: View, Equatable {
+    let snapshotVersion: Int
+    let episodes: [SubscriptionEpisodeDisplayItem]
+    let selectedEpisodeIDs: Set<String>
+    let open: (ProcessLibraryItem) -> Void
+    let openInLibrary: (ProcessLibraryItem) -> Void
+    let toggleSelection: (ProcessLibraryItem) -> Void
+
+    static func == (lhs: SubscriptionEpisodeList, rhs: SubscriptionEpisodeList) -> Bool {
         lhs.snapshotVersion == rhs.snapshotVersion
-            && lhs.snapshot?.subscription.id == rhs.snapshot?.subscription.id
-            && lhs.hasSubscriptions == rhs.hasSubscriptions
+            && lhs.episodes == rhs.episodes
             && lhs.selectedEpisodeIDs == rhs.selectedEpisodeIDs
-            && lhs.episodeFilterState == rhs.episodeFilterState
-            && lhs.filteredEpisodes == rhs.filteredEpisodes
-            && lhs.bulkActionState == rhs.bulkActionState
     }
 
     var body: some View {
-        List {
-            if let snapshot {
-                subscriptionSummary(counts: snapshot.counts)
-                    .listRowInsets(EdgeInsets(top: 22, leading: 22, bottom: 10, trailing: 22))
-                    .listRowSeparator(.hidden)
-                    .listRowBackground(Color.clear)
-                currentEpisodesSection(filteredEpisodes, totalCount: snapshot.episodes.count)
-                channelMetadataSection(snapshot.subscription)
-                    .listRowInsets(EdgeInsets(top: 14, leading: 22, bottom: 22, trailing: 22))
-                    .listRowSeparator(.hidden)
-                    .listRowBackground(Color.clear)
-            }
-            if !hasSubscriptions {
-                emptyState
-                    .listRowInsets(EdgeInsets(top: 22, leading: 22, bottom: 22, trailing: 22))
-                    .listRowSeparator(.hidden)
-                    .listRowBackground(Color.clear)
-            }
-        }
-        .listStyle(.plain)
-        .scrollContentBackground(.hidden)
-    }
-
-    private func subscriptionSummary(counts: SubscriptionDetailCounts) -> some View {
-        HStack(spacing: 12) {
-            statBlock(title: "Episodes", value: "\(counts.total)", tint: .primary)
-            statBlock(title: "Unprocessed", value: "\(counts.unprocessed)", tint: counts.unprocessed > 0 ? .blue : .secondary)
-            statBlock(title: "Processed", value: "\(counts.processed)", tint: .green)
-        }
-    }
-
-    private func statBlock(title: String, value: String, tint: Color) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(value)
-                .font(.system(size: 24, weight: .semibold, design: .rounded).monospacedDigit())
-                .foregroundStyle(tint)
-            Text(title)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(14)
-        .background(Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
-    }
-
-    private func currentEpisodesSection(_ episodes: [SubscriptionEpisodeDisplayItem], totalCount: Int) -> some View {
-        Section {
-            if totalCount > 0 {
-                SubscriptionEpisodeFilterBar(
-                    filterState: episodeFilterState,
-                    selectedCount: visibleSelectedCount(in: episodes),
-                    setShowsOnlyUnprocessed: setShowsOnlyUnprocessed,
-                    setTimeFilter: setTimeFilter,
-                    toggleAllVisibleSelection: toggleAllVisibleSelection,
-                    selectFrontVisibleSelection: selectFrontVisibleSelection
-                )
-                .listRowInsets(EdgeInsets(top: 4, leading: 22, bottom: 4, trailing: 22))
-                .listRowSeparator(.hidden)
-                .listRowBackground(Color.clear)
-            }
-            if totalCount == 0 {
-                Label("No episodes imported for this subscription yet.", systemImage: "tray")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                    .padding(.vertical, 10)
-                    .listRowInsets(EdgeInsets(top: 4, leading: 22, bottom: 4, trailing: 22))
-                    .listRowSeparator(.hidden)
-                    .listRowBackground(Color.clear)
-            } else if episodes.isEmpty {
-                Label("No episodes match the filters.", systemImage: "line.3.horizontal.decrease.circle")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                    .padding(.vertical, 10)
-                    .listRowInsets(EdgeInsets(top: 4, leading: 22, bottom: 4, trailing: 22))
-                    .listRowSeparator(.hidden)
-                    .listRowBackground(Color.clear)
-            } else {
-                if bulkActionState.hasSelection {
-                    SubscriptionBulkActionBar(
-                        actionState: bulkActionState,
-                        clearSelection: clearSelection,
-                        processSelection: processSelection,
-                        archiveSelection: archiveSelection,
-                        deleteSelection: deleteSelection
-                    )
-                    .listRowInsets(EdgeInsets(top: 4, leading: 22, bottom: 4, trailing: 22))
-                    .listRowSeparator(.hidden)
-                    .listRowBackground(Color.clear)
-                }
+        if episodes.isEmpty {
+            SubscriptionPlaceholder(
+                systemImage: "line.3.horizontal.decrease.circle",
+                title: "No matching episodes",
+                message: "Change the status or time range filters to see more episodes."
+            )
+        } else {
+            List {
                 ForEach(episodes) { episode in
                     SubscriptionEpisodeRow(
                         episode: episode,
                         isSelected: selectedEpisodeIDs.contains(episode.id),
                         open: open,
+                        openInLibrary: openInLibrary,
                         toggleSelection: toggleSelection
                     )
-                        .equatable()
-                        .listRowInsets(EdgeInsets(top: 4, leading: 22, bottom: 4, trailing: 22))
-                        .listRowSeparator(.hidden)
-                        .listRowBackground(Color.clear)
+                    .equatable()
+                    .listRowInsets(EdgeInsets(top: 1, leading: 14, bottom: 1, trailing: 14))
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
                 }
             }
-        } header: {
-            Text("Current Episodes")
-                .font(.headline)
-                .foregroundStyle(.primary)
-                .textCase(nil)
-                .padding(.top, 8)
-                .padding(.bottom, 2)
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
         }
-    }
-
-    private func visibleSelectedCount(in episodes: [SubscriptionEpisodeDisplayItem]) -> Int {
-        episodes.reduce(into: 0) { count, episode in
-            if selectedEpisodeIDs.contains(episode.id) {
-                count += 1
-            }
-        }
-    }
-
-    private func channelMetadataSection(_ subscription: PodcastSubscriptionItem) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            sectionTitle("Channel Metadata")
-            VStack(alignment: .leading, spacing: 8) {
-                metadataRow(title: "Source", value: subscription.source)
-                metadataRow(title: "Group", value: subscription.groupName)
-                metadataRow(title: "Feed", value: subscriptionDisplayURL(subscription))
-                metadataRow(title: "Created", value: emptyAware(subscription.createdAt))
-                metadataRow(title: "Last Checked", value: emptyAware(subscription.lastCheckedAt))
-            }
-            .textSelection(.enabled)
-            .padding(14)
-            .background(Color.secondary.opacity(0.06), in: RoundedRectangle(cornerRadius: 8))
-        }
-    }
-
-    private func sectionTitle(_ title: String) -> some View {
-        Text(title)
-            .font(.headline)
-    }
-
-    private func metadataRow(title: String, value: String) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 12) {
-            Text(title)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
-                .frame(width: 92, alignment: .leading)
-            Text(value)
-                .font(.callout)
-                .lineLimit(2)
-                .truncationMode(.middle)
-            Spacer(minLength: 0)
-        }
-    }
-
-    private var emptyState: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Image(systemName: "dot.radiowaves.left.and.right")
-                .font(.title2)
-                .foregroundStyle(.secondary)
-            Text("No subscriptions")
-                .font(.title3.weight(.semibold))
-            Text("Add a podcast or RSS feed to create metadata-only episode records.")
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.vertical, 10)
-    }
-
-    private func subscriptionDisplayURL(_ subscription: PodcastSubscriptionItem) -> String {
-        let feedURL = subscription.feedURL.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !feedURL.isEmpty { return feedURL }
-        let url = subscription.url.trimmingCharacters(in: .whitespacesAndNewlines)
-        return url.isEmpty ? "No URL" : url
-    }
-
-    private func emptyAware(_ value: String) -> String {
-        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? "None" : trimmed
     }
 }
 
@@ -616,6 +507,40 @@ struct SubscriptionDetailCounts: Equatable {
 
     var asSubscriptionItemCounts: SubscriptionItemCounts {
         SubscriptionItemCounts(unprocessed: unprocessed, total: total)
+    }
+}
+
+enum SubscriptionEpisodeStatusFilter: String, CaseIterable, Identifiable {
+    case all
+    case unprocessed
+    case processed
+
+    var id: String {
+        rawValue
+    }
+
+    var title: String {
+        switch self {
+        case .all: return "All"
+        case .unprocessed: return "Unprocessed"
+        case .processed: return "Processed"
+        }
+    }
+
+    func count(in counts: SubscriptionDetailCounts) -> Int {
+        switch self {
+        case .all: return counts.total
+        case .unprocessed: return counts.unprocessed
+        case .processed: return counts.processed
+        }
+    }
+
+    func includes(_ episode: SubscriptionEpisodeDisplayItem) -> Bool {
+        switch self {
+        case .all: return true
+        case .unprocessed: return !episode.isProcessed
+        case .processed: return episode.isProcessed
+        }
     }
 }
 
@@ -665,110 +590,117 @@ enum SubscriptionEpisodeTimeFilter: String, CaseIterable, Identifiable {
     }
 }
 
-struct SubscriptionEpisodeFilterState: Equatable {
-    let showsOnlyUnprocessed: Bool
-    let timeFilter: SubscriptionEpisodeTimeFilter
-    let filteredCount: Int
-    let totalCount: Int
+enum SubscriptionEpisodeSortOrder: Equatable {
+    case oldestFirst
+    case newestFirst
+
+    var title: String {
+        self == .oldestFirst ? "Oldest first" : "Newest first"
+    }
+
+    var systemImage: String {
+        self == .oldestFirst ? "arrow.up" : "arrow.down"
+    }
+
+    var toggled: Self {
+        self == .oldestFirst ? .newestFirst : .oldestFirst
+    }
 }
 
 enum SubscriptionEpisodeFilters {
     static func filteredEpisodes(
         _ episodes: [SubscriptionEpisodeDisplayItem],
-        showsOnlyUnprocessed: Bool,
+        statusFilter: SubscriptionEpisodeStatusFilter,
         timeFilter: SubscriptionEpisodeTimeFilter,
+        sortOrder: SubscriptionEpisodeSortOrder = .newestFirst,
         now: Date = Date(),
         calendar: Calendar = .current
     ) -> [SubscriptionEpisodeDisplayItem] {
         episodes.filter { episode in
-            (!showsOnlyUnprocessed || !episode.isProcessed)
+            statusFilter.includes(episode)
                 && timeFilter.includes(episode.filterDate, now: now, calendar: calendar)
+        }.sorted { lhs, rhs in
+            if lhs.filterDate == rhs.filterDate {
+                return lhs.id < rhs.id
+            }
+            return sortOrder == .oldestFirst
+                ? lhs.filterDate < rhs.filterDate
+                : lhs.filterDate > rhs.filterDate
         }
     }
 }
 
 private struct SubscriptionEpisodeFilterBar: View {
-    let filterState: SubscriptionEpisodeFilterState
-    let selectedCount: Int
-    let setShowsOnlyUnprocessed: (Bool) -> Void
-    let setTimeFilter: (SubscriptionEpisodeTimeFilter) -> Void
-    let toggleAllVisibleSelection: () -> Void
-    let selectFrontVisibleSelection: (Int) -> Void
+    let counts: SubscriptionDetailCounts
+    @Binding var statusFilter: SubscriptionEpisodeStatusFilter
+    @Binding var timeFilter: SubscriptionEpisodeTimeFilter
+    @Binding var sortOrder: SubscriptionEpisodeSortOrder
 
     var body: some View {
-        HStack(spacing: 10) {
-            Toggle("Unprocessed only", isOn: onlyUnprocessedBinding)
-                .toggleStyle(.checkbox)
-                .fixedSize(horizontal: true, vertical: false)
+        HStack(spacing: AppControlMetrics.controlSpacing) {
+            // Drop the counts before the trailing controls run out of room.
+            ViewThatFits(in: .horizontal) {
+                statusPicker(showsCounts: true)
+                statusPicker(showsCounts: false)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
 
-            Menu {
-                ForEach(SubscriptionEpisodeTimeFilter.allCases) { filter in
-                    Button {
-                        setTimeFilter(filter)
-                    } label: {
-                        Label(filter.title, systemImage: filterState.timeFilter == filter ? "checkmark" : "calendar")
+            HStack(spacing: AppControlMetrics.controlSpacing) {
+                timeFilterMenu
+
+                Button {
+                    sortOrder = sortOrder.toggled
+                } label: {
+                    Image(systemName: sortOrder.systemImage)
+                }
+                .buttonStyle(AppButtonStyle(iconOnly: true))
+                .appFastTooltip(sortOrder.title)
+                .accessibilityLabel("Sort by publication date")
+                .accessibilityValue(sortOrder.title)
+            }
+            .fixedSize()
+            .layoutPriority(1)
+        }
+    }
+
+    private func statusPicker(showsCounts: Bool) -> some View {
+        AppPicker("Episode status", selection: $statusFilter) {
+            ForEach(SubscriptionEpisodeStatusFilter.allCases) { filter in
+                Text(showsCounts ? "\(filter.title) \(filter.count(in: counts))" : filter.title).tag(filter)
+            }
+        }
+        .appSegmentedControl(size: .regular)
+        .labelsHidden()
+        .fixedSize()
+    }
+
+    private var timeFilterMenu: some View {
+        AppMenu(iconOnly: timeFilter == .all, variant: timeFilter == .all ? .normal : .prominent) {
+            ForEach(SubscriptionEpisodeTimeFilter.allCases) { filter in
+                Button {
+                    timeFilter = filter
+                } label: {
+                    if timeFilter == filter {
+                        Label(filter.title, systemImage: "checkmark")
+                    } else {
+                        Text(filter.title)
                     }
                 }
-            } label: {
-                SubscriptionMenuLabel(title: filterState.timeFilter.title, systemImage: "calendar")
             }
-            .fixedSize(horizontal: true, vertical: false)
-            .menuStyle(.button)
-            .menuIndicator(.hidden)
-            .buttonStyle(SubscriptionControlButtonStyle())
-
-            Button {
-                toggleAllVisibleSelection()
-            } label: {
-                Label(selectAllTitle, systemImage: isAllVisibleSelected ? "checkmark.circle.fill" : "checkmark.circle")
-                    .lineLimit(1)
+        } label: {
+            if timeFilter == .all {
+                Image(systemName: "calendar")
+            } else {
+                AppMenuLabel(title: timeFilter.title, systemImage: "calendar")
             }
-            .buttonStyle(SubscriptionControlButtonStyle())
-            .disabled(filterState.filteredCount == 0)
-
-            ForEach(SubscriptionBulkSelection.frontSelectionLimits, id: \.self) { limit in
-                Button {
-                    selectFrontVisibleSelection(limit)
-                } label: {
-                    Label("First \(limit)", systemImage: "list.number")
-                        .lineLimit(1)
-                }
-                .buttonStyle(SubscriptionControlButtonStyle())
-                .disabled(filterState.filteredCount == 0)
-                .accessibilityLabel("Select first \(limit) items")
-            }
-
-            Text("\(filterState.filteredCount) / \(filterState.totalCount)")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
-                .monospacedDigit()
-
-            Spacer(minLength: 8)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 9)
-        .background(Color.secondary.opacity(0.06), in: RoundedRectangle(cornerRadius: 8))
-    }
-
-    private var isAllVisibleSelected: Bool {
-        filterState.filteredCount > 0 && selectedCount == filterState.filteredCount
-    }
-
-    private var selectAllTitle: String {
-        isAllVisibleSelected ? "Deselect all" : "Select all"
-    }
-
-    private var onlyUnprocessedBinding: Binding<Bool> {
-        Binding(
-            get: { filterState.showsOnlyUnprocessed },
-            set: setShowsOnlyUnprocessed
-        )
+        .appFastTooltip("Publication date: \(timeFilter.title.lowercased())")
+        .accessibilityLabel("Episode time range")
+        .accessibilityValue(timeFilter.title)
     }
 }
 
 enum SubscriptionBulkSelection {
-    static let frontSelectionLimits = [10, 20]
-
     static func selectedItems(
         from episodes: [SubscriptionEpisodeDisplayItem],
         selectedIDs: Set<String>
@@ -817,7 +749,6 @@ enum SubscriptionBulkSelection {
 
 struct SubscriptionBulkActionState: Equatable {
     let selectedCount: Int
-    let unprocessedCount: Int
     let transcribeAndSummarizeCount: Int
     let localOnlyCount: Int
     let isProcessing: Bool
@@ -840,19 +771,20 @@ private struct SubscriptionBulkActionBar: View {
     let deleteSelection: () -> Void
 
     var body: some View {
-        HStack(spacing: 8) {
-            Text("Selected \(actionState.selectedCount)")
+        HStack(spacing: AppControlMetrics.controlSpacing) {
+            Text("\(actionState.selectedCount) selected")
                 .font(.callout.weight(.semibold))
+                .monospacedDigit()
                 .lineLimit(1)
 
-            Spacer(minLength: 8)
+            Spacer(minLength: 0)
 
-            Menu {
+            AppMenu(variant: .prominent) {
                 Button {
                     processSelection(.transcribeAndSummarize)
                 } label: {
                     Label(
-                        "\(ProcessingWorkflow.transcribeAndSummarize.actionTitle(isCloudConfigured: actionState.isCloudSummaryConfigured)): \(actionState.transcribeAndSummarizeCount) items",
+                        ProcessingWorkflow.transcribeAndSummarize.actionTitle(isCloudConfigured: actionState.isCloudSummaryConfigured),
                         systemImage: "play.fill"
                     )
                 }
@@ -861,47 +793,44 @@ private struct SubscriptionBulkActionBar: View {
                 Button {
                     processSelection(.localOnly)
                 } label: {
-                    Label("Transcribe \(actionState.localOnlyCount) items locally", systemImage: "waveform")
+                    Label("Transcribe locally", systemImage: "waveform")
                 }
                 .disabled(actionState.isProcessing || actionState.localOnlyCount == 0)
             } label: {
-                SubscriptionMenuLabel(title: "Process \(actionState.unprocessedCount) items", systemImage: "play.fill")
+                AppMenuLabel(title: "Process", systemImage: "play.fill")
             }
             .disabled(actionState.isProcessing || !actionState.canProcessAny)
-            .menuStyle(.button)
-            .menuIndicator(.hidden)
-            .buttonStyle(SubscriptionControlButtonStyle())
 
             Button {
                 archiveSelection()
             } label: {
-                Label("Archive \(actionState.selectedCount) items", systemImage: "archivebox")
-                    .lineLimit(1)
+                Image(systemName: "archivebox")
             }
-            .buttonStyle(SubscriptionControlButtonStyle())
+            .buttonStyle(AppButtonStyle(iconOnly: true))
             .disabled(actionState.isProcessing)
+            .appFastTooltip("Archive selected")
+            .accessibilityLabel("Archive selected")
 
             Button(role: .destructive) {
                 deleteSelection()
             } label: {
-                Label("Delete \(actionState.selectedCount) items", systemImage: "trash")
-                    .lineLimit(1)
+                Image(systemName: "trash")
             }
-            .buttonStyle(SubscriptionControlButtonStyle(variant: .destructive))
+            .buttonStyle(AppButtonStyle(iconOnly: true))
             .disabled(actionState.isProcessing)
+            .appFastTooltip("Delete selected")
+            .accessibilityLabel("Delete selected")
 
             Button {
                 clearSelection()
             } label: {
-                Label("Deselect all items", systemImage: "xmark.circle")
+                Text("Done")
                     .lineLimit(1)
             }
-            .buttonStyle(SubscriptionControlButtonStyle())
-            .accessibilityLabel("Deselect all items")
+            .buttonStyle(AppButtonStyle(variant: .subtle))
+            .keyboardShortcut(.cancelAction)
+            .accessibilityLabel("Deselect all")
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 9)
-        .background(Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
     }
 }
 
@@ -916,7 +845,6 @@ struct SubscriptionEpisodeDisplayItem: Identifiable, Equatable {
     let isProcessed: Bool
     let isStarred: Bool
     let iconColor: Color
-    let trailingIconName: String
     let accessibilityLabel: String
 
     var id: String {
@@ -933,7 +861,6 @@ struct SubscriptionEpisodeDisplayItem: Identifiable, Equatable {
             && lhs.iconName == rhs.iconName
             && lhs.isProcessed == rhs.isProcessed
             && lhs.isStarred == rhs.isStarred
-            && lhs.trailingIconName == rhs.trailingIconName
             && lhs.accessibilityLabel == rhs.accessibilityLabel
     }
 
@@ -945,14 +872,11 @@ struct SubscriptionEpisodeDisplayItem: Identifiable, Equatable {
         let displayDate = Self.publishedDate(for: item) ?? item.modifiedAt
         filterDate = displayDate
         dateTitle = displayDate.formatted(date: .abbreviated, time: .omitted)
-        iconName = item.isProcessed ? "doc.text.fill" : "tray"
+        iconName = item.isProcessed ? "doc.text.fill" : "waveform"
         isProcessed = item.isProcessed
         isStarred = item.isStarred
-        iconColor = item.isProcessed ? .green : .blue
-        trailingIconName = item.isProcessed ? "chevron.right" : "info.circle"
-        accessibilityLabel = item.isProcessed
-            ? "Open processed episode \(item.title)"
-            : "Show episode details for \(item.title)"
+        iconColor = item.isProcessed ? .green : .secondary
+        accessibilityLabel = "Show episode details for \(item.title)"
     }
 
     private static func primaryCaption(for item: ProcessLibraryItem) -> String {
@@ -969,10 +893,13 @@ struct SubscriptionEpisodeDisplayItem: Identifiable, Equatable {
     }
 }
 
+// Clicking a row always shows its details in place. Leaving the subscription
+// page only happens through the explicit "Open" action on processed episodes.
 private struct SubscriptionEpisodeRow: View, Equatable {
     let episode: SubscriptionEpisodeDisplayItem
     let isSelected: Bool
     let open: (ProcessLibraryItem) -> Void
+    let openInLibrary: (ProcessLibraryItem) -> Void
     let toggleSelection: (ProcessLibraryItem) -> Void
 
     static func == (lhs: SubscriptionEpisodeRow, rhs: SubscriptionEpisodeRow) -> Bool {
@@ -981,61 +908,64 @@ private struct SubscriptionEpisodeRow: View, Equatable {
     }
 
     var body: some View {
-        HStack(alignment: .center, spacing: 10) {
-            Button {
+        HStack(alignment: .center, spacing: AppControlMetrics.controlSpacing) {
+            AppSelectionButton(
+                isSelected: isSelected,
+                label: isSelected ? "Deselect \(episode.title)" : "Select \(episode.title)"
+            ) {
                 toggleSelection(episode.item)
-            } label: {
-                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(isSelected ? Color.accentColor : Color.secondary)
-                    .frame(width: 22, height: 44)
-                    .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel(isSelected ? "Deselect \(episode.title)" : "Select \(episode.title)")
 
             Button {
                 open(episode.item)
             } label: {
                 rowContent
             }
-            .buttonStyle(.plain)
+            .buttonStyle(AppRowButtonStyle())
             .frame(maxWidth: .infinity, alignment: .leading)
             .accessibilityLabel(episode.accessibilityLabel)
+
+            if episode.isProcessed {
+                Button {
+                    openInLibrary(episode.item)
+                } label: {
+                    Text("Open")
+                }
+                .buttonStyle(AppButtonStyle(size: .compact))
+                .appFastTooltip("Open transcript in Library")
+                .accessibilityLabel("Open \(episode.title) in Library")
+            }
         }
-        .padding(12)
+        .padding(.leading, 4)
+        .padding(.trailing, AppControlMetrics.controlSpacing)
         .frame(
             maxWidth: .infinity,
-            minHeight: SubscriptionEpisodeLayout.rowHeight,
-            maxHeight: SubscriptionEpisodeLayout.rowHeight,
+            minHeight: AppControlMetrics.episodeRowHeight,
+            maxHeight: AppControlMetrics.episodeRowHeight,
             alignment: .leading
         )
-        .background(rowBackground, in: RoundedRectangle(cornerRadius: 8))
-        .overlay {
-            RoundedRectangle(cornerRadius: 8)
-                .strokeBorder(isSelected ? Color.accentColor.opacity(0.36) : Color.clear, lineWidth: 1)
-        }
-        .contentShape(RoundedRectangle(cornerRadius: 8))
+        .appRowSurface(isSelected: isSelected)
     }
 
     private var rowContent: some View {
-        HStack(alignment: .center, spacing: 10) {
-            Image(systemName: episode.iconName)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(episode.iconColor)
-                .frame(width: 18)
-
+        HStack(alignment: .center, spacing: AppControlMetrics.controlSpacing) {
             VStack(alignment: .leading, spacing: 3) {
                 Text(episode.title)
-                    .font(.headline)
+                    .font(.body.weight(.medium))
                     .lineLimit(1)
-                HStack(spacing: 8) {
+                    .truncationMode(.tail)
+                HStack(spacing: 5) {
+                    Image(systemName: episode.iconName)
+                        .foregroundStyle(episode.iconColor)
+                        .accessibilityHidden(true)
+                    Text(episode.dateTitle)
+                        .fixedSize(horizontal: true, vertical: false)
+                    Text("·")
                     Text(episode.primaryCaption)
                         .lineLimit(1)
                         .truncationMode(.tail)
+                    Text("·")
                     Text(episode.queueTitle)
-                        .fixedSize(horizontal: true, vertical: false)
-                    Text(episode.dateTitle)
                         .fixedSize(horizontal: true, vertical: false)
                 }
                 .font(.caption)
@@ -1043,288 +973,80 @@ private struct SubscriptionEpisodeRow: View, Equatable {
                 .lineLimit(1)
             }
 
-            Spacer(minLength: 8)
+            Spacer(minLength: 0)
             if episode.isStarred {
                 Image(systemName: "star.fill")
+                    .font(.caption)
                     .foregroundStyle(.yellow)
                     .accessibilityLabel("Starred")
             }
-            Image(systemName: episode.trailingIconName)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(.secondary)
-                .accessibilityHidden(true)
         }
         .contentShape(Rectangle())
     }
-
-    private var rowBackground: Color {
-        if isSelected {
-            return Color.accentColor.opacity(0.14)
-        }
-        return Color.secondary.opacity(0.06)
-    }
 }
 
-private enum SubscriptionEpisodeLayout {
-    static let rowHeight: CGFloat = 68
-}
-
-private enum SubscriptionControlMetrics {
-    static let controlHeight: CGFloat = 30
-    static let iconButtonWidth: CGFloat = 48
-    static let squareButtonWidth: CGFloat = 30
-    static let cornerRadius: CGFloat = 8
-}
-
-private struct SubscriptionMenuLabel: View {
-    let title: String
-    let systemImage: String
+private struct SubscriptionInfoSheet: View {
+    let subscription: PodcastSubscriptionItem
+    let counts: SubscriptionDetailCounts?
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        HStack(spacing: 6) {
-            Label(title, systemImage: systemImage)
-                .lineLimit(1)
-            Image(systemName: "chevron.down")
-                .font(.system(size: 9, weight: .bold))
-                .accessibilityHidden(true)
-        }
-    }
-}
-
-private struct SubscriptionControlButtonStyle: ButtonStyle {
-    enum Variant {
-        case normal
-        case destructive
-        case prominent
-    }
-
-    let variant: Variant
-    let width: CGFloat?
-
-    init(variant: Variant = .normal, width: CGFloat? = nil) {
-        self.variant = variant
-        self.width = width
-    }
-
-    func makeBody(configuration: Configuration) -> some View {
-        SubscriptionControlButton(
-            configuration: configuration,
-            variant: variant,
-            width: width
-        )
-    }
-}
-
-private struct SubscriptionControlButton: View {
-    let configuration: ButtonStyle.Configuration
-    let variant: SubscriptionControlButtonStyle.Variant
-    let width: CGFloat?
-
-    @Environment(\.isEnabled) private var isEnabled
-    @State private var isHovered = false
-
-    var body: some View {
-        configuration.label
-            .font(.callout.weight(.semibold))
-            .foregroundStyle(foregroundStyle)
-            .padding(.horizontal, width == nil ? 12 : 0)
-            .frame(width: width, height: SubscriptionControlMetrics.controlHeight)
-            .background(backgroundStyle, in: RoundedRectangle(cornerRadius: SubscriptionControlMetrics.cornerRadius, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: SubscriptionControlMetrics.cornerRadius, style: .continuous)
-                    .strokeBorder(borderStyle, lineWidth: borderLineWidth)
-            }
-            .contentShape(RoundedRectangle(cornerRadius: SubscriptionControlMetrics.cornerRadius, style: .continuous))
-            .scaleEffect(configuration.isPressed ? 0.98 : 1)
-            .animation(.easeOut(duration: 0.12), value: isHovered)
-            .animation(.easeOut(duration: 0.08), value: configuration.isPressed)
-            .onHover { isHovered = $0 }
-    }
-
-    private var foregroundStyle: Color {
-        if !isEnabled {
-            return .secondary.opacity(0.48)
-        }
-        switch variant {
-        case .normal:
-            return isHovered ? .primary : .secondary
-        case .destructive:
-            return isHovered ? .red : .secondary
-        case .prominent:
-            return .white
-        }
-    }
-
-    private var backgroundStyle: Color {
-        if !isEnabled {
-            return Color.secondary.opacity(0.06)
-        }
-        switch variant {
-        case .normal:
-            if configuration.isPressed {
-                return Color.accentColor.opacity(0.22)
-            }
-            return isHovered ? Color.accentColor.opacity(0.16) : Color.secondary.opacity(0.10)
-        case .destructive:
-            if configuration.isPressed {
-                return Color.red.opacity(0.20)
-            }
-            return isHovered ? Color.red.opacity(0.14) : Color.secondary.opacity(0.10)
-        case .prominent:
-            if configuration.isPressed {
-                return Color.accentColor.opacity(0.72)
-            }
-            return Color.accentColor.opacity(isHovered ? 0.88 : 0.82)
-        }
-    }
-
-    private var borderStyle: Color {
-        switch variant {
-        case .normal:
-            return Color.accentColor.opacity(0.36)
-        case .destructive:
-            return Color.red.opacity(0.32)
-        case .prominent:
-            return Color.clear
-        }
-    }
-
-    private var borderLineWidth: CGFloat {
-        isHovered && isEnabled && variant != .prominent ? 1 : 0
-    }
-}
-
-private struct SubscriptionHeaderActionButtonStyle: ButtonStyle {
-    let role: ButtonRole?
-
-    func makeBody(configuration: Configuration) -> some View {
-        SubscriptionHeaderActionButton(
-            configuration: configuration,
-            role: role
-        )
-    }
-}
-
-private struct SubscriptionHeaderActionButton: View {
-    let configuration: ButtonStyle.Configuration
-    let role: ButtonRole?
-
-    @Environment(\.isEnabled) private var isEnabled
-    @State private var isHovered = false
-
-    var body: some View {
-        configuration.label
-            .font(.system(size: 17, weight: .medium))
-            .foregroundStyle(foregroundStyle)
-            .frame(width: SubscriptionControlMetrics.iconButtonWidth, height: SubscriptionControlMetrics.controlHeight)
-            .background(backgroundStyle, in: RoundedRectangle(cornerRadius: SubscriptionControlMetrics.cornerRadius, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: SubscriptionControlMetrics.cornerRadius, style: .continuous)
-                    .strokeBorder(borderStyle, lineWidth: isHovered && isEnabled ? 1 : 0)
-            }
-            .contentShape(RoundedRectangle(cornerRadius: SubscriptionControlMetrics.cornerRadius, style: .continuous))
-            .scaleEffect(configuration.isPressed ? 0.97 : 1)
-            .animation(.easeOut(duration: 0.12), value: isHovered)
-            .animation(.easeOut(duration: 0.08), value: configuration.isPressed)
-            .onHover { isHovered = $0 }
-    }
-
-    private var isDestructive: Bool {
-        role == .destructive
-    }
-
-    private var foregroundStyle: Color {
-        if !isEnabled {
-            return .secondary.opacity(0.48)
-        }
-        if isDestructive && isHovered {
-            return .red
-        }
-        return isHovered ? .primary : .secondary
-    }
-
-    private var backgroundStyle: Color {
-        if !isEnabled {
-            return Color.secondary.opacity(0.06)
-        }
-        if configuration.isPressed {
-            return isDestructive ? Color.red.opacity(0.20) : Color.accentColor.opacity(0.22)
-        }
-        if isHovered {
-            return isDestructive ? Color.red.opacity(0.14) : Color.accentColor.opacity(0.16)
-        }
-        return Color.secondary.opacity(0.10)
-    }
-
-    private var borderStyle: Color {
-        isDestructive ? Color.red.opacity(0.32) : Color.accentColor.opacity(0.36)
-    }
-}
-
-private struct SubscriptionFastTooltipModifier: ViewModifier {
-    let text: String
-
-    @State private var isHovered = false
-    @State private var isPresented = false
-    @State private var presentationTask: Task<Void, Never>?
-
-    private let delayNanoseconds: UInt64 = 180_000_000
-
-    func body(content: Content) -> some View {
-        content
-            .onHover(perform: updateHoverState)
-            .overlay(alignment: .bottom) {
-                if isPresented {
-                    Text(text)
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(.white)
-                        .lineLimit(1)
-                        .fixedSize(horizontal: true, vertical: false)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 5)
-                        .background(
-                            Color.black.opacity(0.86),
-                            in: RoundedRectangle(cornerRadius: 6, style: .continuous)
-                        )
-                        .offset(y: 34)
-                        .transition(.opacity.combined(with: .scale(scale: 0.98)))
-                        .allowsHitTesting(false)
+        VStack(alignment: .leading, spacing: 0) {
+            Text(subscription.title)
+                .font(.title3.weight(.semibold))
+                .lineLimit(2)
+                .padding(22)
+            Divider()
+            VStack(alignment: .leading, spacing: 9) {
+                if let counts {
+                    infoRow("Episodes", "\(counts.total) total · \(counts.unprocessed) unprocessed · \(counts.processed) processed")
                 }
+                infoRow("Source", subscription.source)
+                infoRow("Group", subscription.groupName)
+                infoRow("Feed", SubscriptionFeedURL.display(for: subscription) ?? "None")
+                infoRow("Created", subscription.createdAt)
+                infoRow("Last Checked", subscription.lastCheckedAt)
             }
-            .zIndex(isPresented ? 1 : 0)
-            .animation(.easeOut(duration: 0.10), value: isPresented)
-    }
-
-    private func updateHoverState(_ hovered: Bool) {
-        isHovered = hovered
-        presentationTask?.cancel()
-
-        if hovered {
-            presentationTask = Task {
-                try? await Task.sleep(nanoseconds: delayNanoseconds)
-                guard !Task.isCancelled else { return }
-                await MainActor.run {
-                    if isHovered {
-                        isPresented = true
-                    }
+            .textSelection(.enabled)
+            .padding(22)
+            Spacer(minLength: 0)
+            Divider()
+            HStack {
+                Spacer()
+                Button {
+                    dismiss()
+                } label: {
+                    Text("Done")
                 }
+                .buttonStyle(AppButtonStyle(variant: .prominent))
+                .keyboardShortcut(.defaultAction)
             }
-        } else {
-            isPresented = false
-            presentationTask = nil
+            .padding(.horizontal, 22)
+            .padding(.vertical, 14)
         }
+        .frame(minWidth: 460, idealWidth: 520, maxWidth: 640, minHeight: 300)
     }
-}
 
-private extension View {
-    func subscriptionFastTooltip(_ text: String) -> some View {
-        modifier(SubscriptionFastTooltipModifier(text: text))
+    private func infoRow(_ title: String, _ value: String) -> some View {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return HStack(alignment: .firstTextBaseline, spacing: 12) {
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .frame(width: 92, alignment: .leading)
+            Text(trimmed.isEmpty ? "None" : trimmed)
+                .font(.callout)
+                .lineLimit(2)
+                .truncationMode(.middle)
+            Spacer(minLength: 0)
+        }
     }
 }
 
 private struct SubscriptionEpisodeInfoSheet: View {
     let item: ProcessLibraryItem
     let details: ChannelEpisodeDetails
+    let openInLibrary: (() -> Void)?
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -1355,7 +1077,7 @@ private struct SubscriptionEpisodeInfoSheet: View {
                     .font(.title3.weight(.semibold))
                     .lineLimit(3)
                     .textSelection(.enabled)
-                HStack(spacing: 8) {
+                HStack(spacing: AppControlMetrics.controlSpacing) {
                     statusPill(item.isProcessed ? "Processed" : "Unprocessed", tint: item.isProcessed ? .green : .blue)
                     statusPill(item.queueStatus.compactTitle, tint: .secondary)
                 }
@@ -1383,14 +1105,14 @@ private struct SubscriptionEpisodeInfoSheet: View {
                 case .failure:
                     fallbackCover
                 case .empty:
-                    ProgressView()
+                    AppProgressSpinner()
                 @unknown default:
                     fallbackCover
                 }
             }
             .frame(width: 92, height: 92)
-            .background(Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
-            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .background(Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: AppControlMetrics.cornerRadius))
+            .clipShape(RoundedRectangle(cornerRadius: AppControlMetrics.cornerRadius))
         } else {
             fallbackCover
         }
@@ -1401,7 +1123,7 @@ private struct SubscriptionEpisodeInfoSheet: View {
             .font(.system(size: 30, weight: .semibold))
             .foregroundStyle(.secondary)
             .frame(width: 92, height: 92)
-            .background(Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
+            .background(Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: AppControlMetrics.cornerRadius))
     }
 
     private func statusPill(_ title: String, tint: Color) -> some View {
@@ -1426,7 +1148,7 @@ private struct SubscriptionEpisodeInfoSheet: View {
         }
         .textSelection(.enabled)
         .padding(14)
-        .background(Color.secondary.opacity(0.06), in: RoundedRectangle(cornerRadius: 8))
+        .background(Color.secondary.opacity(0.06), in: RoundedRectangle(cornerRadius: AppControlMetrics.cornerRadius))
     }
 
     @ViewBuilder
@@ -1459,7 +1181,7 @@ private struct SubscriptionEpisodeInfoSheet: View {
     }
 
     private var footer: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: AppControlMetrics.controlSpacing) {
             Button {
                 copyPrimaryURLToPasteboard()
             } label: {
@@ -1470,9 +1192,18 @@ private struct SubscriptionEpisodeInfoSheet: View {
             Button {
                 dismiss()
             } label: {
-                Label("Close", systemImage: "xmark")
+                Text("Close")
             }
             .keyboardShortcut(.cancelAction)
+            if let openInLibrary {
+                Button {
+                    openInLibrary()
+                } label: {
+                    Label("Open in Library", systemImage: "doc.text")
+                }
+                .buttonStyle(AppButtonStyle(variant: .prominent))
+                .keyboardShortcut(.defaultAction)
+            }
         }
     }
 

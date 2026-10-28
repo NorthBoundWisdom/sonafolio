@@ -122,7 +122,7 @@ def test_cmake_missing_dependency_fails_without_preparing_sources(tmp_path, monk
         command.append(f"-DGEOCONTROLS_SOURCE_ROOT={tmp_path / 'absent'}")
     result = subprocess.run(command, text=True, capture_output=True, timeout=15)
     assert result.returncode != 0
-    assert "no download is performed" in " ".join(result.stderr.lower().split())
+    assert "python3 configs/qt_workflow.py config" in " ".join(result.stderr.split())
     assert not (build / "_deps").exists()
     assert not (tmp_path / "absent").exists()
 

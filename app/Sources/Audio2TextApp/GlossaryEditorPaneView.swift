@@ -17,10 +17,8 @@ struct GlossaryEditorPaneView: View {
             HSplitView {
                 SimpleMarkdownView(text: suggestionsText, style: readingStyle)
                     .frame(minWidth: 280, maxWidth: .infinity, maxHeight: .infinity)
-                TextEditor(text: jsonBinding)
-                    .font(.system(.body, design: .monospaced))
+                AppTextEditor(text: jsonBinding, mode: .code)
                     .frame(minWidth: 280, maxWidth: .infinity, maxHeight: .infinity)
-                    .padding(8)
             }
         }
         .onAppear { loadDraft(force: true) }
@@ -29,11 +27,11 @@ struct GlossaryEditorPaneView: View {
     }
 
     private var header: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: AppControlMetrics.controlSpacing) {
             TextField("Term", text: $term)
-                .textFieldStyle(.roundedBorder)
+                .textFieldStyle(AppTextFieldStyle())
                 .frame(width: 180)
-            Picker("", selection: $category) {
+            AppPicker("", selection: $category) {
                 ForEach(categories, id: \.self) { value in
                     Text(value).tag(value)
                 }

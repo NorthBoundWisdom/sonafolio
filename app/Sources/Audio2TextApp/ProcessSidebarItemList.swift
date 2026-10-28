@@ -12,10 +12,10 @@ extension ProcessSidebarView {
                 .padding(.trailing, 12)
 
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: SidebarMetrics.rowSpacing) {
+                LazyVStack(alignment: .leading, spacing: AppControlMetrics.Sidebar.rowSpacing) {
                     itemListRows
                 }
-                .padding(.top, SidebarMetrics.rowSpacing)
+                .padding(.top, AppControlMetrics.Sidebar.rowSpacing)
                 .padding(.trailing, 12)
                 .animation(Self.libraryListAnimation, value: itemListAnimationIDs)
             }
@@ -47,14 +47,14 @@ extension ProcessSidebarView {
     }
 
     var itemsSection: some View {
-        VStack(alignment: .leading, spacing: SidebarMetrics.rowSpacing) {
+        VStack(alignment: .leading, spacing: AppControlMetrics.Sidebar.rowSpacing) {
             itemsHeader
             itemsRows
         }
     }
 
     var itemsHeader: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: AppControlMetrics.controlSpacing) {
             sidebarHeader(itemsSectionTitle)
             Spacer()
             if isShowingUnprocessedItems {
@@ -70,10 +70,10 @@ extension ProcessSidebarView {
     var itemsRows: some View {
         if controller.visibleLibraryItems.isEmpty {
             Text("No items")
-                .font(.system(size: SidebarMetrics.countFontSize, weight: .regular))
+                .font(.system(size: AppControlMetrics.Sidebar.countFontSize, weight: .regular))
                 .foregroundStyle(.secondary)
                 .padding(.leading, 26)
-                .frame(height: SidebarMetrics.itemRowHeight)
+                .frame(height: AppControlMetrics.Sidebar.itemRowHeight)
         } else {
             ForEach(controller.visibleLibraryItems) { item in
                 processItemRow(item)
@@ -88,7 +88,7 @@ extension ProcessSidebarView {
     }
 
     var unprocessedFilterMenu: some View {
-        Menu {
+        AppMenu(size: .compact, iconOnly: true, variant: .subtle) {
             Button {
                 controller.setUnprocessedQueueFilter(nil)
             } label: {
@@ -109,10 +109,8 @@ extension ProcessSidebarView {
             }
         } label: {
             Image(systemName: controller.unprocessedQueueFilter == nil ? "line.3.horizontal.decrease.circle" : "line.3.horizontal.decrease.circle.fill")
-                .font(.system(size: 12, weight: .medium))
-                .frame(width: 22, height: 20)
         }
-        .menuStyle(.borderlessButton)
+
         .fixedSize()
         .foregroundStyle(controller.unprocessedQueueFilter == nil ? Color.secondary : Color.accentColor)
         .help(unprocessedFilterHelp)
@@ -126,11 +124,8 @@ extension ProcessSidebarView {
             }
         } label: {
             Image(systemName: readFilterSystemName)
-                .font(.system(size: 13, weight: .medium))
-                .frame(width: 22, height: 20)
-                .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(AppButtonStyle(variant: .subtle, size: .compact, iconOnly: true))
         .foregroundStyle(controller.hidesReadLibraryItems ? Color.accentColor : Color.secondary)
         .help(controller.hidesReadLibraryItems ? "Show read items" : "Hide read items")
         .accessibilityLabel(controller.hidesReadLibraryItems ? "Show read items" : "Hide read items")
@@ -236,7 +231,7 @@ extension ProcessSidebarView {
             Image(systemName: queueStatusFlagIcon(for: item.queueStatus))
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(queueStatusColor(for: item.queueStatus))
-                .frame(width: 16, height: SidebarMetrics.itemRowHeight)
+                .frame(width: 16, height: AppControlMetrics.Sidebar.itemRowHeight)
                 .help(item.queueStatus.compactTitle)
                 .accessibilityLabel(item.queueStatus.compactTitle)
         }
@@ -268,17 +263,16 @@ extension ProcessSidebarView {
                         .accessibilityLabel("Starred")
                 }
             }
-            .font(.system(size: SidebarMetrics.titleFontSize, weight: item.isRead ? .regular : .semibold))
+            .font(.system(size: AppControlMetrics.Sidebar.titleFontSize, weight: item.isRead ? .regular : .semibold))
             .foregroundStyle(item.isRead ? Color.secondary : Color.primary)
-            .frame(height: SidebarMetrics.itemRowHeight)
-            .padding(.horizontal, SidebarMetrics.rowHorizontalPadding)
-            .background(
-                RoundedRectangle(cornerRadius: SidebarMetrics.rowCornerRadius)
-                    .fill(processItemRowBackground(for: item))
+            .frame(height: AppControlMetrics.Sidebar.itemRowHeight)
+            .padding(.horizontal, AppControlMetrics.Sidebar.rowHorizontalPadding)
+            .appLibraryRowSurface(
+                isActive: controller.selectedLibraryItemID == item.id,
+                isSelected: selectedItemIDs.contains(item.id)
             )
-            .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(AppRowButtonStyle())
         .contextMenu {
             processItemContextMenu(for: item)
         }
@@ -320,13 +314,6 @@ extension ProcessSidebarView {
             selectedItemIDs.insert(item.id)
         }
         lastSelectedItemID = item.id
-    }
-
-    func processItemRowBackground(for item: ProcessLibraryItem) -> Color {
-        if selectedItemIDs.contains(item.id) {
-            return Color.accentColor.opacity(0.28)
-        }
-        return controller.selectedLibraryItemID == item.id ? Color.accentColor.opacity(0.20) : Color.clear
     }
 
     func contextItems(for item: ProcessLibraryItem) -> [ProcessLibraryItem] {

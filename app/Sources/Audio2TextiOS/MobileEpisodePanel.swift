@@ -108,7 +108,7 @@ struct MobileEpisodePanel: View {
                     }
 
                     if isSubscriptionsSource {
-                        MobileIconButton(
+                        AppIconButton(
                             systemName: "plus",
                             label: "Add Subscription",
                             isDisabled: store.libraryRoot == nil || store.isRefreshing,
@@ -121,7 +121,7 @@ struct MobileEpisodePanel: View {
     }
 
     private var readFilterButton: some View {
-        MobileIconButton(
+        AppIconButton(
             systemName: readFilterSystemName,
             label: readFilterLabel,
             action: onToggleHidingReadItems
@@ -140,7 +140,7 @@ struct MobileEpisodePanel: View {
         VStack(alignment: .leading, spacing: 9) {
             HStack(spacing: 10) {
                 if let onBack {
-                    MobileInlineBackButton(action: onBack)
+                    AppIconButton(systemName: "chevron.left", label: "Back", action: onBack)
                 }
 
                 VStack(alignment: .leading, spacing: 2) {
@@ -158,7 +158,7 @@ struct MobileEpisodePanel: View {
                 }
 
                 if let onToggleSourcePanel {
-                    MobileIconButton(
+                    AppIconButton(
                         systemName: "sidebar.left",
                         label: isSourcePanelVisible ? "Hide Left Panel" : "Show Left Panel",
                         action: onToggleSourcePanel
@@ -166,7 +166,7 @@ struct MobileEpisodePanel: View {
                 }
 
                 if isSubscriptionsSource {
-                    MobileIconButton(
+                    AppIconButton(
                         systemName: "plus",
                         label: "Add Subscription",
                         isDisabled: store.libraryRoot == nil || store.isRefreshing,
@@ -241,7 +241,7 @@ struct MobileEpisodePanel: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(AppRowButtonStyle())
             .contextMenu {
                 episodeContextMenu(for: episode)
             }

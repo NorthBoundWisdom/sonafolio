@@ -37,12 +37,12 @@ cache.
 Root `build.local.json` is ignored and stores local environment variables and PATH
 entries. The first Config creates it from `configs/build.local.example.json` when
 missing; existing local settings are preserved. Fill in its empty path fields and
-configure again. All project commands load it automatically. Set `GEOCONTROLS_SOURCE_ROOT`
-to a prepared GeoControls checkout and `AUDIO2TEXTQT_QT_PREFIX` to the installed SDK.
-`cmake/GeoControls.cmake` only consumes local sources. Missing sources fail without
-network access, downloads or submodule initialization. The Python workflow also
-accepts `--geocontrols-source`. CI prepares its pinned checkout in a separate step;
-release packaging records the actual clean checkout's commit and MIT license.
+configure again. All project commands load it automatically. Set `AUDIO2TEXTQT_QT_PREFIX`
+to the installed SDK. Config fetches the GeoControls commit pinned in
+`configs/dependencies.json` into `build/dependencies/GeoControls`; a custom
+`GEOCONTROLS_SOURCE_ROOT` or `--geocontrols-source` checkout is used as-is.
+`cmake/GeoControls.cmake` only consumes local sources. CI checks out the same pin in a
+separate step; release packaging records the actual clean checkout's commit and MIT license.
 See [build configuration](../../doc/BUILD_CONFIGURATION.md) for the file format.
 
 The client uses `GeoControls` for all interactive controls and `GeoControls.AppShell`

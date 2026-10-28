@@ -1,16 +1,23 @@
 import Foundation
 
 extension JobController {
-    func addSubscription() {
-        guard !stage.isRunning, !isAddingSubscription, !isRefreshingSubscriptions else { return }
+    func addSubscription(completion: ((Bool) -> Void)? = nil) {
+        guard !stage.isRunning, !isAddingSubscription, !isRefreshingSubscriptions else {
+            completion?(false)
+            return
+        }
         let url = subscriptionURLText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !url.isEmpty else {
             message = "Enter a subscription URL"
+            completion?(false)
             return
         }
         logEvent(category: "subscriptions", event: "subscription_add_requested", message: "Subscription add requested", fields: ["host": URL(string: url)?.host ?? "", "group": subscriptionGroupName])
         currentTask?.cancel()
-        currentTask = Task { await runAddSubscription(url: url, groupName: subscriptionGroupName) }
+        currentTask = Task {
+            let succeeded = await runAddSubscription(url: url, groupName: subscriptionGroupName)
+            completion?(succeeded)
+        }
     }
 
     func refreshAllSubscriptions() {
@@ -41,8 +48,10 @@ extension JobController {
         currentTask = Task { await runRemoveSubscription(id: subscription.id) }
     }
 
-    func runAddSubscription(url: String, groupName: String) async {
+    @discardableResult
+    func runAddSubscription(url: String, groupName: String) async -> Bool {
         isAddingSubscription = true
+        defer { isAddingSubscription = false }
         message = "Adding subscription"
         do {
             let runtime = try runtimeProvider()
@@ -55,12 +64,13 @@ extension JobController {
             await refreshLibraryAndWait()
             message = "Subscription added"
             logEvent(category: "subscriptions", event: "subscription_added", message: "Subscription added", fields: ["host": URL(string: url)?.host ?? "", "group": groupName])
+            return true
         } catch {
             message = error.localizedDescription
             appendLog("\nERROR: \(error.localizedDescription)\n")
             logError(category: "subscriptions", event: "subscription_add_failed", error: error, fields: ["host": URL(string: url)?.host ?? ""])
+            return false
         }
-        isAddingSubscription = false
     }
 
     func runRefreshSubscriptions(id: String?, fullHistory: Bool = false) async {

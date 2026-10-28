@@ -221,21 +221,21 @@ final class SubscriptionLibraryTests: XCTestCase {
 
         let unprocessedRecent = SubscriptionEpisodeFilters.filteredEpisodes(
             episodes,
-            showsOnlyUnprocessed: true,
+            statusFilter: .unprocessed,
             timeFilter: .last7Days,
             now: now,
             calendar: calendar
         )
         let todayOnly = SubscriptionEpisodeFilters.filteredEpisodes(
             episodes,
-            showsOnlyUnprocessed: false,
+            statusFilter: .all,
             timeFilter: .today,
             now: now,
             calendar: calendar
         )
         let thisYear = SubscriptionEpisodeFilters.filteredEpisodes(
             episodes,
-            showsOnlyUnprocessed: false,
+            statusFilter: .all,
             timeFilter: .thisYear,
             now: now,
             calendar: calendar

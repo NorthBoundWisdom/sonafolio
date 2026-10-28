@@ -435,20 +435,31 @@ void LibraryController::setSelectedQueueStatus(const QString &status)
 
 void LibraryController::archiveSelected(bool archived)
 {
-    const QString episodePath = m_selectedItem.value("episodeJsonPath").toString();
-    QJsonObject metadata = AppPaths::readJsonObject(episodePath);
-    if (metadata.isEmpty())
+    setItemsArchived({m_selectedItem.value("id").toString()}, archived);
+}
+
+void LibraryController::setItemsArchived(const QStringList &episodeIds, bool archived)
+{
+    const QString updatedAt = QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs);
+    for (const QString &episodeId : episodeIds)
     {
-        emit errorRaised(QString("Could not read episode metadata: %1").arg(episodePath));
-        return;
-    }
-    metadata["app_status"] = archived ? "archived" : defaultNodeStatus(metadata);
-    metadata["app_status_updated_at"] = QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs);
-    QString error;
-    if (!AppPaths::writeJsonObject(episodePath, metadata, &error))
-    {
-        emit errorRaised(QString("Could not update episode metadata: %1").arg(error));
-        return;
+        const QString episodePath = itemById(episodeId).value("episodeJsonPath").toString();
+        QJsonObject metadata = AppPaths::readJsonObject(episodePath);
+        if (metadata.isEmpty())
+        {
+            emit errorRaised(QString("Could not read episode metadata: %1").arg(episodePath));
+            refresh();
+            return;
+        }
+        metadata["app_status"] = archived ? "archived" : defaultNodeStatus(metadata);
+        metadata["app_status_updated_at"] = updatedAt;
+        QString error;
+        if (!AppPaths::writeJsonObject(episodePath, metadata, &error))
+        {
+            emit errorRaised(QString("Could not update episode metadata: %1").arg(error));
+            refresh();
+            return;
+        }
     }
     refresh();
 }

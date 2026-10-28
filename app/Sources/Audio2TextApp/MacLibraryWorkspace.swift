@@ -89,9 +89,9 @@ final class LibrarySplitViewController: NSSplitViewController {
 
     init(source: AnyView, list: AnyView, detail: AnyView, preferences: UserDefaults = .standard) {
         self.preferences = preferences
-        sourceHost = NSHostingController(rootView: source)
-        listHost = NSHostingController(rootView: list)
-        detailHost = NSHostingController(rootView: detail)
+        sourceHost = NSHostingController(rootView: AnyView(source.appControlTheme()))
+        listHost = NSHostingController(rootView: AnyView(list.appControlTheme()))
+        detailHost = NSHostingController(rootView: AnyView(detail.appControlTheme()))
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -158,9 +158,9 @@ final class LibrarySplitViewController: NSSplitViewController {
     }
 
     func updateContent(source: AnyView, list: AnyView, detail: AnyView) {
-        sourceHost.rootView = source
-        listHost.rootView = list
-        detailHost.rootView = detail
+        sourceHost.rootView = AnyView(source.appControlTheme())
+        listHost.rootView = AnyView(list.appControlTheme())
+        detailHost.rootView = AnyView(detail.appControlTheme())
     }
 
     func columnFrame(at index: Int) -> CGRect {

@@ -18,6 +18,7 @@ if str(REPO_ROOT) not in sys.path:
 
 from configs.build_environment import use_build_environment  # noqa: E402
 from configs.app_build import load_app_build_settings  # noqa: E402
+from configs.swift_environment import swift_module_cache_environment  # noqa: E402
 
 APP_DIR = REPO_ROOT / "app"
 PRODUCT_NAME = "Audio2TextApp"
@@ -58,9 +59,7 @@ def _run(cmd: list[str], *, cwd: Path = REPO_ROOT, env: dict[str, str] | None = 
 
 
 def _swift_env() -> dict[str, str]:
-    module_cache = SWIFTPM_BUILD_DIR / "module-cache"
-    module_cache.mkdir(parents=True, exist_ok=True)
-    return {"CLANG_MODULE_CACHE_PATH": str(module_cache)}
+    return swift_module_cache_environment(SWIFTPM_BUILD_DIR)
 
 
 def _app_build_settings() -> dict[str, str]:
@@ -483,7 +482,11 @@ def _test_for_platform(level: str, *, platform: str) -> None:
         )
         _run([str(python), "src/scripts/check_public_paths.py"])
         _run([str(python), "-m", "pytest", "-q", "src/tests"], env={"PYTHONPATH": "src"})
-        _run(["swift", "test", "--scratch-path", str(SWIFTPM_BUILD_DIR)], cwd=APP_DIR)
+        _run(
+            ["swift", "test", "--scratch-path", str(SWIFTPM_BUILD_DIR)],
+            cwd=APP_DIR,
+            env=_swift_env(),
+        )
     if level in {"precommit", "xcode-builds"}:
         if platform == "ios":
             _build_ios_simulator("debug")

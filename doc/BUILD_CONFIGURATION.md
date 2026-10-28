@@ -15,8 +15,8 @@ never replaced or merged, including after template updates. Help and ordinary
 environment reads do not create the file.
 
 The template leaves SDK, dependency and signing paths empty. Fill them in for your
-machine, then run configuration again. Qt configuration fails if GeoControls is not
-prepared; generating the file never downloads or locates dependencies automatically.
+machine, then run configuration again. Generating the file never locates SDKs
+automatically; GeoControls is prepared by Qt configuration as described below.
 You can also copy the template manually before the first configuration.
 
 For example, edit the generated `build.local.json`:
@@ -24,7 +24,6 @@ For example, edit the generated `build.local.json`:
 ```json
 {
   "environment": {
-    "GEOCONTROLS_SOURCE_ROOT": "${REPO_ROOT}/../GeoControls",
     "AUDIO2TEXTQT_QT_PREFIX": "$HOME/Qt/6.12.0/macos",
     "CMAKE_BUILD_PARALLEL_LEVEL": "4",
     "ARCHIVE_ID": "2"
@@ -59,11 +58,17 @@ ID `1`. The environment file, signing settings and SDK paths must remain untrack
 
 ## Local Qt dependencies
 
-Prepare GeoControls yourself and set `GEOCONTROLS_SOURCE_ROOT` in the local file.
-`qt/Audio2TextQt/cmake/GeoControls.cmake` only validates and adds that source directory.
-It never clones, fetches, initializes submodules or downloads dependencies. Missing
-sources fail immediately. A direct CMake invocation can instead pass
-`-DGEOCONTROLS_SOURCE_ROOT=...`; the Python workflow also accepts `--geocontrols-source`.
+`configs/dependencies.json` pins GeoControls by HTTPS remote and full commit.
+`python3 configs/qt_workflow.py config` fetches that commit into ignored
+`build/dependencies/GeoControls` when it is missing, and moves a clean checkout to a new
+pin. A checkout with local changes or a non-Git directory at that path fails instead of
+being replaced. `build` consumes the source recorded by configuration, and
+`source_root_workflow.py --cleanbuild` keeps the dependency checkout.
+
+To develop against another checkout, set `GEOCONTROLS_SOURCE_ROOT` in the local file or
+pass `--geocontrols-source`; a path other than the default is used as-is and never
+fetched. `qt/Audio2TextQt/cmake/GeoControls.cmake` only validates and adds the source
+directory, so a direct CMake invocation must pass `-DGEOCONTROLS_SOURCE_ROOT=...`.
 
 ```bash
 python3 configs/qt_workflow.py config --configuration Release

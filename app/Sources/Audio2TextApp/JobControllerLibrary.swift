@@ -257,9 +257,6 @@ extension JobController {
             subscriptionCount: subscriptions.count,
             isAddingSubscription: isAddingSubscription,
             isRefreshingSubscriptions: isRefreshingSubscriptions,
-            subscriptionURLText: subscriptionURLText,
-            subscriptionGroupName: subscriptionGroupName,
-            availableGroupNames: availableGroupNames,
             isProcessing: stage.isRunning,
             isCloudSummaryConfigured: isCloudSummaryConfigured
         )

@@ -119,20 +119,13 @@ Item {
             shell.close();
         }
 
-        function test_import_tabs_and_subscription_limit() {
+        function test_import_tabs() {
             importer.open();
             tryCompare(importer, "opened", true);
             mouseClick(findChild(importer, "localImportTab"));
             compare(importer.selectedMode, "local");
-            mouseClick(findChild(importer, "subscriptionImportTab"));
-            compare(importer.selectedMode, "subscription");
-            let limit = findChild(importer, "importSubscriptionLimit");
-            compare(limit.value, 20);
-            limit.forceActiveFocus();
-            keyClick(Qt.Key_Up);
-            compare(limit.value, 21);
-            compare(limit.realValue, 21);
             capture(findChild(importer, "importDialogBody"), "import");
+            importer.close();
         }
 
         function test_languages_and_workflow_commit_to_settings() {

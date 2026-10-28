@@ -7,12 +7,12 @@ struct ImportPanelView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Picker("", selection: inputModeBinding) {
+            AppPicker("", selection: inputModeBinding) {
                 ForEach(InputMode.allCases) { mode in
                     Text(mode.title).tag(mode)
                 }
             }
-            .pickerStyle(.segmented)
+            .appSegmentedControl()
 
             if controller.inputMode == .xiaoyuzhou {
                 linkImportFields
@@ -34,15 +34,14 @@ struct ImportPanelView: View {
             Text("Link")
                 .font(.caption)
                 .foregroundStyle(.secondary)
-            HStack(spacing: 8) {
+            HStack(spacing: AppControlMetrics.controlSpacing) {
                 TextField("https://www.xiaoyuzhoufm.com/episode/...", text: urlTextBinding)
-                    .textFieldStyle(.roundedBorder)
+                    .textFieldStyle(AppTextFieldStyle())
                 Button {
                     controller.checkLink()
                 } label: {
                     if case .checking = controller.linkCheckStatus {
-                        ProgressView()
-                            .controlSize(.small)
+                        AppProgressSpinner()
                     } else {
                         Text("Check")
                     }
@@ -81,20 +80,20 @@ struct ImportPanelView: View {
             Text("Audio / Video File")
                 .font(.caption)
                 .foregroundStyle(.secondary)
-            HStack(spacing: 8) {
+            HStack(spacing: AppControlMetrics.controlSpacing) {
                 TextField("Choose an audio or video file", text: selectedFilePathBinding)
-                    .textFieldStyle(.roundedBorder)
+                    .textFieldStyle(AppTextFieldStyle())
                     .disabled(true)
                 Button("Select") {
                     chooseAudioFile()
                 }
             }
-            Picker("", selection: localImportModeBinding) {
+            AppPicker("", selection: localImportModeBinding) {
                 ForEach(LocalImportMode.allCases) { mode in
                     Text(mode.title).tag(mode)
                 }
             }
-            .pickerStyle(.segmented)
+            .appSegmentedControl()
             .labelsHidden()
         }
     }
@@ -104,10 +103,10 @@ struct ImportPanelView: View {
             Text("Group")
                 .font(.caption)
                 .foregroundStyle(.secondary)
-            HStack(spacing: 8) {
+            HStack(spacing: AppControlMetrics.controlSpacing) {
                 TextField("Default", text: selectedGroupNameBinding)
-                    .textFieldStyle(.roundedBorder)
-                Menu {
+                    .textFieldStyle(AppTextFieldStyle())
+                AppMenu(size: .compact, iconOnly: true) {
                     ForEach(controller.availableGroupNames, id: \.self) { groupName in
                         Button(groupName) {
                             controller.selectedGroupName = groupName
@@ -116,7 +115,7 @@ struct ImportPanelView: View {
                 } label: {
                     Image(systemName: "chevron.down")
                 }
-                .menuStyle(.borderlessButton)
+
                 .fixedSize()
                 .help("Choose existing group")
             }
@@ -132,7 +131,7 @@ struct ImportPanelView: View {
                 Text("Cancel")
                     .frame(maxWidth: .infinity)
             }
-            .buttonStyle(.bordered)
+            .buttonStyle(AppButtonStyle())
 
             Button {
                 controller.importOnly()
@@ -141,7 +140,7 @@ struct ImportPanelView: View {
                 Label("Confirm", systemImage: "checkmark")
                     .frame(maxWidth: .infinity)
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(AppButtonStyle(variant: .prominent))
             .disabled(!controller.canConfirmImport)
         }
     }

@@ -65,8 +65,9 @@ systems, not every target machine, GPU driver or optional ASR runtime.
 
 ## Runtime boundary
 
-Qt CI and tag builds prepare the GeoControls revision pinned in an explicit checkout step in
-`.github/workflows/release.yml`. CMake only consumes that local source directory and never downloads it. Its reusable controls,
+Qt CI and tag builds check out the GeoControls revision pinned in `configs/dependencies.json`
+in an explicit step in `.github/workflows/release.yml`; a test keeps both refs equal. CMake only
+consumes that local source directory and never downloads it. Its reusable controls,
 window shell and icons are linked into the client, and the deployed launch check verifies that
 no developer QML search path is needed. Packages include its MIT license and revision inventory.
 

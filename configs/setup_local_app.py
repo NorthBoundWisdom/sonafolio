@@ -16,6 +16,7 @@ if str(REPO_ROOT) not in sys.path:
 
 from configs.build_environment import ensure_local_build_environment, use_build_environment  # noqa: E402
 from configs.generate_xcodeproj import generate_xcodeproj  # noqa: E402
+from configs.swift_environment import swift_module_cache_environment  # noqa: E402
 
 DEFAULT_DATA_ROOT = Path("~/Documents/SpeechToTextData")
 SWIFTPM_BUILD_DIR = REPO_ROOT / "build" / "swiftpm"
@@ -87,9 +88,7 @@ def _command_ok(cmd: list[str], *, cwd: Path = REPO_ROOT) -> bool:
 
 
 def _swift_env() -> dict[str, str]:
-    module_cache = SWIFTPM_BUILD_DIR / "module-cache"
-    module_cache.mkdir(parents=True, exist_ok=True)
-    return {**os.environ, "CLANG_MODULE_CACHE_PATH": str(module_cache)}
+    return {**os.environ, **swift_module_cache_environment(SWIFTPM_BUILD_DIR)}
 
 
 def _atot_imports_from_source(python: Path) -> bool:

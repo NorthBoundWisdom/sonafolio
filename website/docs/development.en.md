@@ -24,7 +24,7 @@ Use actual local SDK paths without committing them. Backend promotion needs gate
 
 Machine-local settings live in ignored root `build.local.json`. Initial local setup or Qt Config creates a missing file from `configs/build.local.example.json`, preserving existing files. Template paths are empty; fill in local settings and run Config again. `environment` contains SDK/GeoControls paths, signing and version variables, while `path` lists additional tool directories. Swift, Qt, CI scripts and optional FreeCM project commands share the loader without generating lock files.
 
-Qt only consumes the local checkout selected by `GEOCONTROLS_SOURCE_ROOT`; missing or invalid paths fail immediately without downloads. Set the SDK with `AUDIO2TEXTQT_QT_PREFIX`, or use explicit `--qt-prefix` and `--geocontrols-source` workflow options. CI prepares its pinned source in a separate checkout step. Packages record the actual revision and MIT license. No FreeCM checkout or installation is required; Config, Build, Run, Test and Package wiring remains available.
+Qt Config fetches the GeoControls commit pinned in `configs/dependencies.json` into `build/dependencies/GeoControls`, and Build uses that checkout; a checkout with local changes fails instead of being replaced. A `GEOCONTROLS_SOURCE_ROOT` or `--geocontrols-source` pointing elsewhere is used as-is and never fetched. Set the SDK with `AUDIO2TEXTQT_QT_PREFIX`, or use explicit `--qt-prefix` and `--geocontrols-source` workflow options. CI checks out the same pin in a separate step. Packages record the actual revision and MIT license. No FreeCM checkout or installation is required; Config, Build, Run, Test and Package wiring remains available.
 
 ## Checks and documentation
 

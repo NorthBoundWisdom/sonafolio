@@ -104,10 +104,8 @@ struct SummaryPaneView: View {
     ) -> some View {
         Button(action: action) {
             Image(systemName: systemName)
-                .font(.system(size: 15, weight: .medium))
-                .frame(width: 54, height: 30)
         }
-        .buttonStyle(SummaryHeaderIconButtonStyle(foregroundColor: foregroundColor))
+        .buttonStyle(AppButtonStyle(iconOnly: true, foregroundColor: foregroundColor))
         .disabled(disabled)
         .help(help)
         .accessibilityLabel(help)
@@ -117,8 +115,7 @@ struct SummaryPaneView: View {
         HStack(spacing: 6) {
             switch status.state {
             case .inProgress:
-                ProgressView()
-                    .controlSize(.small)
+                AppProgressSpinner()
             case .success:
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundStyle(.green)
@@ -138,9 +135,7 @@ struct SummaryPaneView: View {
     @ViewBuilder
     private var content: some View {
         if isEditing && !isSummaryRequestInProgress {
-            TextEditor(text: summaryDraftBinding)
-                .font(.system(.body, design: .monospaced))
-                .padding(8)
+            AppTextEditor(text: summaryDraftBinding, mode: .code)
         } else {
             SimpleMarkdownView(text: previewText, style: readingStyle)
         }
@@ -182,27 +177,5 @@ struct SummaryPaneView: View {
         if summaryURL == nil {
             isEditing = false
         }
-    }
-}
-
-private struct SummaryHeaderIconButtonStyle: ButtonStyle {
-    let foregroundColor: Color
-
-    @Environment(\.isEnabled) private var isEnabled
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .foregroundStyle(isEnabled ? foregroundColor : Color.secondary.opacity(0.45))
-            .background(backgroundColor(isPressed: configuration.isPressed), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-            .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-            .scaleEffect(configuration.isPressed ? 0.98 : 1)
-            .animation(.easeOut(duration: 0.08), value: configuration.isPressed)
-    }
-
-    private func backgroundColor(isPressed: Bool) -> Color {
-        if !isEnabled {
-            return Color.secondary.opacity(0.06)
-        }
-        return isPressed ? Color.secondary.opacity(0.16) : Color.secondary.opacity(0.10)
     }
 }

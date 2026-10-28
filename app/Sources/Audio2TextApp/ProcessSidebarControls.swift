@@ -21,11 +21,16 @@ struct LibrarySyncStatusCard: View {
                         .font(.system(size: 12, weight: .semibold))
                         .fixedSize(horizontal: false, vertical: true)
                     Spacer(minLength: 0)
-                    Image(systemName: "arrow.clockwise")
-                        .font(.system(size: 10, weight: .semibold))
-                        .frame(width: 18, height: 18)
-                        .foregroundStyle(tint)
-                        .fixedSize()
+                    if status.state == .checking {
+                        AppProgressSpinner()
+                            .frame(width: 18, height: 18)
+                    } else {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.system(size: 10, weight: .semibold))
+                            .frame(width: 18, height: 18)
+                            .foregroundStyle(tint)
+                            .fixedSize()
+                    }
                 }
                 Text(status.title)
                     .font(.system(size: 11, weight: .semibold))
@@ -37,16 +42,15 @@ struct LibrarySyncStatusCard: View {
                     .lineLimit(showsFullDetails ? nil : 3)
                     .fixedSize(horizontal: false, vertical: true)
                 if status.state == .syncing, let progress = status.progress {
-                    ProgressView(value: min(1, max(0, progress)))
-                        .progressViewStyle(.linear)
+                    AppProgressBar(value: progress, tint: tint)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .foregroundStyle(Color.primary)
             .padding(10)
-            .background(tint.opacity(0.08), in: RoundedRectangle(cornerRadius: 7))
+            .appRowSurface(background: tint.opacity(0.08))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(AppRowButtonStyle())
         .help(status.detail + " Click to refresh library status.")
         .accessibilityLabel("Library sync: \(status.title)")
         .accessibilityHint("Refresh library status. " + status.detail)
@@ -55,6 +59,7 @@ struct LibrarySyncStatusCard: View {
 
     private var systemImage: String {
         switch status.state {
+        case .checking: return "icloud"
         case .syncing: return "arrow.triangle.2.circlepath.icloud"
         case .offline: return "wifi.slash"
         case .synced: return "checkmark.icloud.fill"
@@ -63,6 +68,7 @@ struct LibrarySyncStatusCard: View {
 
     private var tint: Color {
         switch status.state {
+        case .checking: return .secondary
         case .syncing: return .blue
         case .offline: return .orange
         case .synced: return .green

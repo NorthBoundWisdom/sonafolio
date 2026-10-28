@@ -14,6 +14,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
+from configs import dependencies  # noqa: E402
 from configs.build_environment import ensure_local_build_environment, use_build_environment  # noqa: E402
 from configs.release_licenses import stage_release_licenses  # noqa: E402
 
@@ -245,6 +246,21 @@ def _geocontrols_release_source(build_dir: Path) -> tuple[Path, str]:
     return root, git("rev-parse", "HEAD")
 
 
+def _geocontrols_source_root(args: argparse.Namespace) -> Path:
+    # A custom checkout is consumed as-is; the default pinned location is
+    # fetched or moved to the pinned commit during configuration.
+    pin = dependencies.load_pin("GeoControls")
+    explicit = args.geocontrols_source or os.environ.get("GEOCONTROLS_SOURCE_ROOT", "").strip()
+    if explicit:
+        root = _resolve_repo_path(explicit).resolve()
+        if root != pin.path:
+            return root
+    try:
+        return dependencies.prepare(pin)
+    except dependencies.DependencyError as error:
+        raise SystemExit(f"SonaFolio Qt: {error}") from error
+
+
 def _configure(args: argparse.Namespace, build_dir: Path) -> None:
     # --config only selects a configuration for multi-config generators. Ninja
     # and Makefiles need the build type at configure time to enable optimization.
@@ -256,10 +272,7 @@ def _configure(args: argparse.Namespace, build_dir: Path) -> None:
         build_dir,
         f"-DCMAKE_BUILD_TYPE={args.configuration}",
     ]
-    if args.geocontrols_source:
-        command.append(f"-DGEOCONTROLS_SOURCE_ROOT={_resolve_repo_path(args.geocontrols_source).resolve()}")
-    elif os.environ.get("GEOCONTROLS_SOURCE_ROOT"):
-        command.append(f"-DGEOCONTROLS_SOURCE_ROOT={_resolve_repo_path(os.environ['GEOCONTROLS_SOURCE_ROOT']).resolve()}")
+    command.append(f"-DGEOCONTROLS_SOURCE_ROOT={_geocontrols_source_root(args)}")
     explicit_toolchain = os.environ.get("CMAKE_TOOLCHAIN_FILE")
     vcpkg = os.environ.get("VCPKG_ROOT")
     if explicit_toolchain:
@@ -824,7 +837,10 @@ def _add_common_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--build-dir", default=_repo_relative(DEFAULT_BUILD_DIR))
     parser.add_argument("--configuration", default="Release")
     parser.add_argument("--qt-prefix")
-    parser.add_argument("--geocontrols-source", help="Prepared local GeoControls checkout; never downloaded.")
+    parser.add_argument(
+        "--geocontrols-source",
+        help="Custom GeoControls checkout used as-is instead of the pinned build/dependencies copy.",
+    )
     parser.add_argument("--generator")
 
 

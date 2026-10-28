@@ -6,27 +6,34 @@ import SwiftUI
 
 extension ProcessSidebarView {
     var subscriptionsSection: some View {
-        VStack(alignment: .leading, spacing: SidebarMetrics.rowSpacing) {
+        VStack(alignment: .leading, spacing: AppControlMetrics.Sidebar.rowSpacing) {
             subscriptionsHeader
             subscriptionsRows
         }
     }
 
     var subscriptionsHeader: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: AppControlMetrics.controlSpacing) {
             sidebarHeader("Subscriptions")
             Spacer()
             Button {
                 controller.refreshAllSubscriptions()
             } label: {
                 Image(systemName: "arrow.clockwise")
-                    .font(.system(size: 12, weight: .medium))
-                    .frame(width: 22, height: 20)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(AppButtonStyle(variant: .subtle, size: .compact, iconOnly: true))
             .foregroundStyle(.secondary)
             .help("Refresh all subscriptions")
             .disabled(controller.subscriptions.isEmpty || controller.isRefreshingSubscriptions || controller.isAddingSubscription)
+
+            AppIconButton(
+                systemName: "plus",
+                label: "Add subscription",
+                isDisabled: controller.stage.isRunning || controller.isRefreshingSubscriptions || controller.isAddingSubscription,
+                size: .compact
+            ) {
+                isAddSubscriptionPresented = true
+            }
             .padding(.trailing, 6)
         }
     }
@@ -35,10 +42,10 @@ extension ProcessSidebarView {
     var subscriptionsRows: some View {
         if controller.subscriptions.isEmpty {
             Text("No subscriptions")
-                .font(.system(size: SidebarMetrics.countFontSize, weight: .regular))
+                .font(.system(size: AppControlMetrics.Sidebar.countFontSize, weight: .regular))
                 .foregroundStyle(.secondary)
                 .padding(.leading, 26)
-                .frame(height: SidebarMetrics.itemRowHeight)
+                .frame(height: AppControlMetrics.Sidebar.itemRowHeight)
         } else {
             ForEach(controller.subscriptions) { subscription in
                 subscriptionListRow(subscription)
@@ -61,13 +68,13 @@ extension ProcessSidebarView {
                 VStack(alignment: .leading, spacing: 3) {
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
                         Text(subscription.title)
-                            .font(.system(size: SidebarMetrics.titleFontSize, weight: isSelected ? .semibold : .regular))
+                            .font(.system(size: AppControlMetrics.Sidebar.titleFontSize, weight: isSelected ? .semibold : .regular))
                             .foregroundStyle(.primary)
                             .lineLimit(1)
                             .truncationMode(.tail)
                         if counts.total > 0 {
                             Text("\(counts.unprocessed)/\(counts.total)")
-                                .font(.system(size: SidebarMetrics.countFontSize, weight: .semibold, design: .rounded).monospacedDigit())
+                                .font(.system(size: AppControlMetrics.Sidebar.countFontSize, weight: .semibold, design: .rounded).monospacedDigit())
                                 .foregroundStyle(counts.unprocessed > 0 ? Color.blue : Color.secondary)
                                 .fixedSize(horizontal: true, vertical: false)
                         }
@@ -89,15 +96,11 @@ extension ProcessSidebarView {
                 }
                 Spacer(minLength: 4)
             }
-            .padding(.horizontal, SidebarMetrics.rowHorizontalPadding)
+            .padding(.horizontal, AppControlMetrics.Sidebar.rowHorizontalPadding)
             .padding(.vertical, 7)
-            .background(
-                RoundedRectangle(cornerRadius: SidebarMetrics.rowCornerRadius)
-                    .fill(isSelected ? Color.accentColor.opacity(0.16) : Color.clear)
-            )
-            .contentShape(Rectangle())
+            .appRowSurface(isSelected: isSelected)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(AppRowButtonStyle())
         .contextMenu {
             Button {
                 controller.refreshSubscription(subscription)

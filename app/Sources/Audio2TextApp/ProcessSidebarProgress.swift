@@ -90,7 +90,7 @@ extension ProcessSidebarView {
                     }
                 }
                 .background(
-                    RoundedRectangle(cornerRadius: SidebarMetrics.rowCornerRadius)
+                    RoundedRectangle(cornerRadius: AppControlMetrics.Sidebar.rowCornerRadius)
                         .fill(Color.secondary.opacity(0.10))
                 )
                 .padding(.trailing, 12)
@@ -102,7 +102,7 @@ extension ProcessSidebarView {
     func processingResultStrip(_ report: ProcessingReport) -> some View {
         let tint = report.hasFailures ? Color.red : Color.green
         return VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 8) {
+            HStack(spacing: AppControlMetrics.controlSpacing) {
                 Image(systemName: report.hasFailures ? "xmark.circle.fill" : "checkmark.circle.fill")
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(tint)
@@ -115,10 +115,8 @@ extension ProcessSidebarView {
                     presentedProcessingReport = report
                 } label: {
                     Image(systemName: "list.bullet.rectangle")
-                        .font(.system(size: 11, weight: .semibold))
-                        .frame(width: 18, height: 18)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(AppButtonStyle(variant: .subtle, size: .compact, iconOnly: true))
                 .foregroundStyle(.secondary)
                 .help("View processing results")
                 .accessibilityLabel("View processing results")
@@ -126,10 +124,8 @@ extension ProcessSidebarView {
                     controller.dismissProcessingReport()
                 } label: {
                     Image(systemName: "xmark")
-                        .font(.system(size: 10, weight: .semibold))
-                        .frame(width: 18, height: 18)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(AppButtonStyle(variant: .subtle, size: .compact, iconOnly: true))
                 .foregroundStyle(.secondary)
                 .help("Dismiss status notice")
                 .accessibilityLabel("Dismiss status notice")
@@ -139,7 +135,7 @@ extension ProcessSidebarView {
                 .foregroundStyle(report.hasFailures ? Color.red : Color.secondary)
                 .lineLimit(2)
                 .truncationMode(.tail)
-            HStack(spacing: 8) {
+            HStack(spacing: AppControlMetrics.controlSpacing) {
                 resultCountPill(title: "Succeeded", count: report.successCount, color: .green)
                 resultCountPill(title: "Failed", count: report.failureCount, color: .red)
             }
@@ -147,11 +143,11 @@ extension ProcessSidebarView {
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
         .background(
-            RoundedRectangle(cornerRadius: SidebarMetrics.rowCornerRadius)
+            RoundedRectangle(cornerRadius: AppControlMetrics.Sidebar.rowCornerRadius)
                 .fill(tint.opacity(0.10))
         )
         .overlay(
-            RoundedRectangle(cornerRadius: SidebarMetrics.rowCornerRadius)
+            RoundedRectangle(cornerRadius: AppControlMetrics.Sidebar.rowCornerRadius)
                 .stroke(tint.opacity(0.24), lineWidth: 1)
         )
         .padding(.trailing, 12)
@@ -223,11 +219,11 @@ extension ProcessSidebarView {
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
         .background(
-            RoundedRectangle(cornerRadius: SidebarMetrics.rowCornerRadius)
+            RoundedRectangle(cornerRadius: AppControlMetrics.Sidebar.rowCornerRadius)
                 .fill(taskStateColor(state).opacity(state.isActive ? 0.10 : 0.08))
         )
         .overlay(
-            RoundedRectangle(cornerRadius: SidebarMetrics.rowCornerRadius)
+            RoundedRectangle(cornerRadius: AppControlMetrics.Sidebar.rowCornerRadius)
                 .stroke(taskStateColor(state).opacity(state.isActive ? 0.0 : 0.24), lineWidth: 1)
         )
         .padding(.trailing, 12)
@@ -245,7 +241,7 @@ extension ProcessSidebarView {
     ) -> some View {
         let boundedFraction = min(1.0, max(0.0, fraction))
         return VStack(alignment: .leading, spacing: 5) {
-            HStack(spacing: 8) {
+            HStack(spacing: AppControlMetrics.controlSpacing) {
                 taskStateIndicator(state)
                 Text(title)
                     .font(.system(size: 12, weight: .semibold))
@@ -261,10 +257,8 @@ extension ProcessSidebarView {
                         controller.stopAfterCurrentTask()
                     } label: {
                         Image(systemName: controller.isBatchStopRequested ? "checkmark" : "stop.fill")
-                            .font(.system(size: 10, weight: .semibold))
-                            .frame(width: 18, height: 18)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(AppButtonStyle(variant: .subtle, size: .compact, iconOnly: true))
                     .foregroundStyle(controller.isBatchStopRequested ? Color.secondary : Color.red)
                     .help(controller.isBatchStopRequested ? "Stop after the current task" : "Stop remaining tasks")
                     .disabled(controller.isBatchStopRequested)
@@ -275,10 +269,8 @@ extension ProcessSidebarView {
                         presentedProcessingReport = report
                     } label: {
                         Image(systemName: "list.bullet.rectangle")
-                            .font(.system(size: 10, weight: .semibold))
-                            .frame(width: 18, height: 18)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(AppButtonStyle(variant: .subtle, size: .compact, iconOnly: true))
                     .foregroundStyle(report.hasFailures ? Color.red : Color.secondary)
                     .help(report.hasFailures ? "View failure details" : "View processing results")
                     .accessibilityLabel(report.hasFailures ? "View failure details" : "View processing results")
@@ -299,16 +291,7 @@ extension ProcessSidebarView {
                     .fixedSize(horizontal: false, vertical: true)
                     .help(detail)
             }
-            GeometryReader { geometry in
-                ZStack(alignment: .leading) {
-                    Capsule()
-                        .fill(Color.secondary.opacity(0.16))
-                    Capsule()
-                        .fill(taskStateColor(state))
-                        .frame(width: max(4, geometry.size.width * boundedFraction))
-                }
-            }
-            .frame(height: 4)
+            AppProgressBar(value: boundedFraction, tint: taskStateColor(state))
         }
     }
 
@@ -316,10 +299,7 @@ extension ProcessSidebarView {
     func taskStateIndicator(_ state: ProcessingTaskState) -> some View {
         switch state {
         case .queued, .running:
-            ProgressView()
-                .controlSize(.small)
-                .scaleEffect(0.72)
-                .frame(width: 14, height: 14)
+            AppProgressSpinner()
         case .success:
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: 13, weight: .semibold))

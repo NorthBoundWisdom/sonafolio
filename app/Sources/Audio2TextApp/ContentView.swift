@@ -70,20 +70,20 @@ struct ContentView: View {
             EmptyView()
         } else if let item = store.job.selectedLibraryItem {
             if item.isProcessed {
-                Picker("", selection: selectedTabBinding) {
+                AppPicker("", selection: selectedTabBinding) {
                     ForEach(ContentTab.displayOrder) { tab in
                         Text(tab.title).tag(tab)
                     }
                 }
-                .pickerStyle(.segmented)
+                .appSegmentedControl()
                 .labelsHidden()
             } else {
-                Picker("", selection: queueStatusBinding) {
+                AppPicker("", selection: queueStatusBinding) {
                     ForEach(AppQueueStatus.allCases) { status in
                         Text(status.compactTitle).tag(status)
                     }
                 }
-                .pickerStyle(.segmented)
+                .appSegmentedControl()
                 .labelsHidden()
             }
         }

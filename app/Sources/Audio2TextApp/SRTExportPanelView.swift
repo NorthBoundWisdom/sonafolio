@@ -22,12 +22,8 @@ struct SRTExportPanelView: View {
 
             statusView
 
-            TextEditor(text: logBinding)
-                .font(.system(.caption, design: .monospaced))
+            AppTextEditor(text: logBinding, mode: .log)
                 .frame(height: 180)
-                .scrollContentBackground(.hidden)
-                .background(Color.secondary.opacity(0.08))
-                .clipShape(RoundedRectangle(cornerRadius: 6))
 
             HStack {
                 if controller.successURL != nil {
@@ -46,7 +42,7 @@ struct SRTExportPanelView: View {
                 } label: {
                     Label("Generate", systemImage: "captions.bubble")
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(AppButtonStyle(variant: .prominent))
                 .disabled(!controller.canExport)
             }
         }
@@ -59,9 +55,9 @@ struct SRTExportPanelView: View {
             Text("Audio / Video File")
                 .font(.caption)
                 .foregroundStyle(.secondary)
-            HStack(spacing: 8) {
+            HStack(spacing: AppControlMetrics.controlSpacing) {
                 TextField("Choose an audio or video file", text: selectedFilePathBinding)
-                    .textFieldStyle(.roundedBorder)
+                    .textFieldStyle(AppTextFieldStyle())
                     .disabled(true)
                 Button("Choose") {
                     controller.chooseFile()
@@ -79,9 +75,8 @@ struct SRTExportPanelView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
         case .running:
-            HStack(spacing: 8) {
-                ProgressView()
-                    .controlSize(.small)
+            HStack(spacing: AppControlMetrics.controlSpacing) {
+                AppProgressSpinner()
                 Text("Generating subtitles...")
                     .font(.caption)
                     .foregroundStyle(.secondary)

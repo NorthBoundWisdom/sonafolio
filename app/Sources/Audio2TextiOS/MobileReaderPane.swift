@@ -255,7 +255,7 @@ private struct MobileEpisodeReader: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .center, spacing: 8) {
                 if let onBack {
-                    MobileInlineBackButton(action: onBack)
+                    AppIconButton(systemName: "chevron.left", label: "Back", action: onBack)
                 }
 
                 VStack(alignment: .leading, spacing: 2) {
@@ -275,28 +275,28 @@ private struct MobileEpisodeReader: View {
                 HStack(spacing: 4) {
                     MobileReaderTypographyMenu(style: $readingStyle)
 
-                    MobileReaderActionButton(
+                    AppLabeledIconButton(
                         title: "Read",
                         systemName: episode.isRead ? "checkmark.circle.fill" : "checkmark.circle"
                     ) {
                         onMarkEpisodeRead(episode)
                     }
 
-                    MobileReaderActionButton(
+                    AppLabeledIconButton(
                         title: "Star",
                         systemName: episode.isStarred ? "star.fill" : "star"
                     ) {
                         onToggleEpisodeStar(episode)
                     }
 
-                    MobileReaderActionButton(
+                    AppLabeledIconButton(
                         title: "Archive",
                         systemName: episode.isArchived ? "archivebox.fill" : "archivebox"
                     ) {
                         onArchiveEpisode(episode)
                     }
 
-                    MobileReaderActionButton(
+                    AppLabeledIconButton(
                         title: "Delete",
                         systemName: "trash",
                         role: .destructive
@@ -319,12 +319,12 @@ private struct MobileEpisodeReader: View {
     }
 
     private var sectionPicker: some View {
-        Picker("Reader Section", selection: $section) {
+        AppPicker("Reader Section", selection: $section) {
             ForEach(MobileReaderSection.allCases) { item in
                 Text(item.title).tag(item)
             }
         }
-        .pickerStyle(.segmented)
+        .appSegmentedControl()
         .labelsHidden()
     }
 
@@ -347,7 +347,7 @@ private struct MobileEpisodeReader: View {
     }
 
     private var readerActionsMenu: some View {
-        Menu {
+        AppMenu(iconOnly: true, variant: .subtle) {
             Button {
                 onMarkEpisodeRead(episode)
             } label: {
@@ -375,7 +375,6 @@ private struct MobileEpisodeReader: View {
             }
         } label: {
             Image(systemName: "ellipsis.circle")
-                .frame(width: 34, height: 34)
         }
         .accessibilityLabel("Episode Actions")
     }
@@ -524,26 +523,26 @@ private struct MobileReaderTypographyMenu: View {
     @Binding var style: ReadingStyleSettings
 
     var body: some View {
-        Menu {
-            Picker("Text size", selection: textSizeBinding) {
+        AppMenu(iconOnly: true, variant: .subtle) {
+            AppPicker("Text size", selection: textSizeBinding) {
                 ForEach(ReadingTextSize.allCases) { size in
                     Text(size.title).tag(size)
                 }
             }
 
-            Picker("Line spacing", selection: lineSpacingBinding) {
+            AppPicker("Line spacing", selection: lineSpacingBinding) {
                 ForEach(ReadingLineSpacing.allCases) { spacing in
                     Text(spacing.title).tag(spacing)
                 }
             }
 
-            Picker("Width", selection: contentWidthBinding) {
+            AppPicker("Width", selection: contentWidthBinding) {
                 ForEach(ReadingContentWidth.allCases) { width in
                     Text(width.title).tag(width)
                 }
             }
 
-            Picker("Font", selection: fontDesignBinding) {
+            AppPicker("Font", selection: fontDesignBinding) {
                 ForEach(ReadingFontDesign.allCases) { font in
                     Text(font.title).tag(font)
                 }
@@ -558,7 +557,6 @@ private struct MobileReaderTypographyMenu: View {
             }
         } label: {
             Image(systemName: "textformat.size")
-                .frame(width: 34, height: 34)
         }
         .accessibilityLabel("Typography")
     }
@@ -595,8 +593,7 @@ private struct MobileReaderTypographyMenu: View {
 private struct MobileDocumentLoadingView: View {
     var body: some View {
         HStack(alignment: .center, spacing: 10) {
-            ProgressView()
-                .controlSize(.small)
+            AppProgressSpinner()
             Text("Loading")
                 .font(.callout)
         }
